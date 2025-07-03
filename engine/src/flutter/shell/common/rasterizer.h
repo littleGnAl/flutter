@@ -227,6 +227,12 @@ class Rasterizer final : public SnapshotDelegate,
   ///
   void Setup(std::unique_ptr<Surface> surface);
 
+  void AddViewSurface(int64_t view_id,
+                      std::unique_ptr<Surface> surface,
+                      std::shared_ptr<ExternalViewEmbedder> &external_view_embedder);
+
+  void RemoveViewSurface(int64_t view_id);
+
   //----------------------------------------------------------------------------
   /// @brief      Releases the previously set up on-screen render surface and
   ///             collects associated resources. No more rendering may occur
@@ -235,6 +241,8 @@ class Rasterizer final : public SnapshotDelegate,
   ///             Calling this method multiple times is safe.
   ///
   void Teardown();
+
+  void Teardown(int64_t view_id);
 
   //----------------------------------------------------------------------------
   /// @brief      Releases any resource used by the external view embedder.
@@ -761,7 +769,9 @@ class Rasterizer final : public SnapshotDelegate,
   Delegate& delegate_;
   [[maybe_unused]] MakeGpuImageBehavior gpu_image_behavior_;
   std::shared_ptr<impeller::ImpellerContextFuture> impeller_context_;
-  std::unique_ptr<Surface> surface_;
+  // std::unique_ptr<Surface> surface_;
+  std::unordered_map<int64_t, std::unique_ptr<Surface>> view_surfaces_;
+  std::unordered_map<int64_t, std::shared_ptr<ExternalViewEmbedder>> external_view_embedders_;
   std::unique_ptr<SnapshotSurfaceProducer> snapshot_surface_producer_;
   std::unique_ptr<flutter::CompositorContext> compositor_context_;
   std::unordered_map<int64_t, ViewRecord> view_records_;
@@ -769,7 +779,7 @@ class Rasterizer final : public SnapshotDelegate,
   bool user_override_resource_cache_bytes_ = false;
   std::optional<size_t> max_cache_bytes_;
   fml::RefPtr<fml::RasterThreadMerger> raster_thread_merger_;
-  std::shared_ptr<ExternalViewEmbedder> external_view_embedder_;
+  // std::shared_ptr<ExternalViewEmbedder> external_view_embedder_;
   std::unique_ptr<SnapshotController> snapshot_controller_;
 
   // WeakPtrFactory must be the last member.

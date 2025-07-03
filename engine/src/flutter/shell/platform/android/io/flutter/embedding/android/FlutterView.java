@@ -199,6 +199,9 @@ public class FlutterView extends FrameLayout
 
   private Consumer<WindowLayoutInfo> windowInfoListener;
 
+  private static long nextViewId = 0; // Match the `kFlutterImplicitViewId`
+  @NonNull private long viewId;
+
   /**
    * Constructs a {@code FlutterView} programmatically, without any XML attributes.
    *
@@ -371,14 +374,19 @@ public class FlutterView extends FrameLayout
   private void init() {
     Log.v(TAG, "Initializing FlutterView");
 
+    viewId = nextViewId++;
+
     if (flutterSurfaceView != null) {
       Log.v(TAG, "Internally using a FlutterSurfaceView.");
+      flutterSurfaceView.setViewId(viewId);
       addView(flutterSurfaceView);
     } else if (flutterTextureView != null) {
       Log.v(TAG, "Internally using a FlutterTextureView.");
+      flutterTextureView.setViewId(viewId);
       addView(flutterTextureView);
     } else {
       Log.v(TAG, "Internally using a FlutterImageView.");
+      flutterImageView.setViewId(viewId);
       addView(flutterImageView);
     }
 
@@ -898,6 +906,8 @@ public class FlutterView extends FrameLayout
 
     requestUnbufferedDispatch(event);
 
+    Log.v(TAG, "onTouchEvent");
+
     return androidTouchProcessor.onTouchEvent(event);
   }
 
@@ -1144,6 +1154,7 @@ public class FlutterView extends FrameLayout
     keyboardManager = new KeyboardManager(this);
     androidTouchProcessor =
         new AndroidTouchProcessor(this.flutterEngine.getRenderer(), /*trackMotionEvents=*/ false);
+    androidTouchProcessor.setViewId(viewId);
 
     accessibilityBridge =
         new AccessibilityBridge(
@@ -1159,36 +1170,53 @@ public class FlutterView extends FrameLayout
         accessibilityBridge.isAccessibilityEnabled(),
         accessibilityBridge.isTouchExplorationEnabled());
 
-    // Connect AccessibilityBridge to the PlatformViewsController within the FlutterEngine.
-    // This allows platform Views to hook into Flutter's overall accessibility system.
-    this.flutterEngine.getPlatformViewsController().attachAccessibilityBridge(accessibilityBridge);
-    this.flutterEngine
-        .getPlatformViewsController()
-        .attachToFlutterRenderer(this.flutterEngine.getRenderer());
 
-    this.flutterEngine.getPlatformViewsController2().attachAccessibilityBridge(accessibilityBridge);
-    this.flutterEngine
-        .getPlatformViewsController2()
-        .attachToFlutterRenderer(this.flutterEngine.getRenderer());
 
-    // Inform the Android framework that it should retrieve a new InputConnection
-    // now that an engine is attached.
-    // TODO(mattcarroll): once this is proven to work, move this line ot TextInputPlugin
-    textInputPlugin.getInputMethodManager().restartInput(this);
+    if (viewId == 0) {
+//      androidTouchProcessor =
+//              new AndroidTouchProcessor(this.flutterEngine.getRenderer(), /*trackMotionEvents=*/ false);
+//      androidTouchProcessor.setViewId(viewId);
 
-    // Push View and Context related information from Android to Flutter.
-    sendUserSettingsToFlutter();
-    getContext()
-        .getContentResolver()
-        .registerContentObserver(
-            Settings.System.getUriFor(Settings.System.TEXT_SHOW_PASSWORD),
-            false,
-            systemSettingsObserver);
+      // Connect AccessibilityBridge to the PlatformViewsController within the FlutterEngine.
+      // This allows platform Views to hook into Flutter's overall accessibility system.
+      this.flutterEngine.getPlatformViewsController().attachAccessibilityBridge(accessibilityBridge);
+      this.flutterEngine
+              .getPlatformViewsController()
+              .attachToFlutterRenderer(this.flutterEngine.getRenderer());
 
-    sendViewportMetricsToFlutter();
+      this.flutterEngine.getPlatformViewsController2().attachAccessibilityBridge(accessibilityBridge);
+      this.flutterEngine
+              .getPlatformViewsController2()
+              .attachToFlutterRenderer(this.flutterEngine.getRenderer());
 
-    flutterEngine.getPlatformViewsController().attachToView(this);
-    flutterEngine.getPlatformViewsController2().attachToView(this);
+      // Inform the Android framework that it should retrieve a new InputConnection
+      // now that an engine is attached.
+      // TODO(mattcarroll): once this is proven to work, move this line ot TextInputPlugin
+      textInputPlugin.getInputMethodManager().restartInput(this);
+
+      // Push View and Context related information from Android to Flutter.
+      sendUserSettingsToFlutter();
+      getContext()
+              .getContentResolver()
+              .registerContentObserver(
+                      Settings.System.getUriFor(Settings.System.TEXT_SHOW_PASSWORD),
+                      false,
+                      systemSettingsObserver);
+
+      sendViewportMetricsToFlutter();
+
+      flutterEngine.getPlatformViewsController().attachToView(this);
+      flutterEngine.getPlatformViewsController2().attachToView(this);
+    } else {
+//      androidTouchProcessor =
+//              new AndroidTouchProcessor(this.flutterEngine.getRenderer(), /*trackMotionEvents=*/ true);
+//      androidTouchProcessor.setViewId(viewId);
+      addViewIfNeeded();
+    }
+
+
+
+
 
     // Notify engine attachment listeners of the attachment.
     for (FlutterEngineAttachmentListener listener : flutterEngineAttachmentListeners) {
@@ -1259,7 +1287,7 @@ public class FlutterView extends FrameLayout
     FlutterRenderer flutterRenderer = flutterEngine.getRenderer();
     isFlutterUiDisplayed = false;
     flutterRenderer.removeIsDisplayingFlutterUiListener(flutterUiDisplayListener);
-    flutterRenderer.stopRenderingToSurface();
+    flutterRenderer.stopRenderingToSurface(viewId);
     flutterRenderer.setSemanticsEnabled(false);
 
     // Revert the image view to previous surface
@@ -1288,8 +1316,10 @@ public class FlutterView extends FrameLayout
   @VisibleForTesting
   @NonNull
   public FlutterImageView createImageView() {
-    return new FlutterImageView(
-        getContext(), getWidth(), getHeight(), FlutterImageView.SurfaceKind.background);
+    FlutterImageView view = new FlutterImageView(
+            getContext(), getWidth(), getHeight(), FlutterImageView.SurfaceKind.background);
+    view.setViewId(viewId);
+    return view;
   }
 
   @VisibleForTesting
@@ -1501,7 +1531,25 @@ public class FlutterView extends FrameLayout
     viewportMetrics.devicePixelRatio = getResources().getDisplayMetrics().density;
     viewportMetrics.physicalTouchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
 
-    flutterEngine.getRenderer().setViewportMetrics(viewportMetrics);
+    flutterEngine.getRenderer().setViewportMetrics(viewId, viewportMetrics);
+  }
+
+  private void addViewIfNeeded() {
+    if (!isAttachedToFlutterEngine()) {
+      Log.w(
+              TAG,
+              "Tried to send viewport metrics from Android to Flutter but this "
+                      + "FlutterView was not attached to a FlutterEngine.");
+      return;
+    }
+
+    // viewportMetrics.devicePixelRatio = getResources().getDisplayMetrics().density;
+    // viewportMetrics.physicalTouchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
+
+          Log.v(
+              TAG,
+              "flutterEngine.getRenderer().addViewIfNeeded(viewId, viewportMetrics);");
+    flutterEngine.getRenderer().addViewIfNeeded(viewId, viewportMetrics);
   }
 
   @Override
@@ -1524,6 +1572,10 @@ public class FlutterView extends FrameLayout
     if (renderSurface instanceof FlutterSurfaceView) {
       ((FlutterSurfaceView) renderSurface).setVisibility(visibility);
     }
+  }
+
+  public long getViewId() {
+    return this.viewId;
   }
 
   /**

@@ -41,6 +41,8 @@ public class FlutterSurfaceView extends SurfaceView implements RenderSurface {
   private boolean isPaused = false;
   @Nullable private FlutterRenderer flutterRenderer;
 
+  private long viewId = -1;
+
   private boolean shouldNotify() {
     return flutterRenderer != null && !isPaused;
   }
@@ -193,7 +195,7 @@ public class FlutterSurfaceView extends SurfaceView implements RenderSurface {
           TAG,
           "Already connected to a FlutterRenderer. Detaching from old one and attaching to new"
               + " one.");
-      this.flutterRenderer.stopRenderingToSurface();
+      this.flutterRenderer.stopRenderingToSurface(getViewId());
       this.flutterRenderer.removeIsDisplayingFlutterUiListener(flutterUiDisplayListener);
     }
 
@@ -273,7 +275,7 @@ public class FlutterSurfaceView extends SurfaceView implements RenderSurface {
     // is displayed.
     //
     // startRenderingToSurface stops rendering to an active surface if it isn't paused.
-    flutterRenderer.startRenderingToSurface(getHolder().getSurface(), isPaused);
+    flutterRenderer.startRenderingToSurface(getViewId(), getHolder().getSurface(), isPaused);
   }
 
   // FlutterRenderer must be non-null.
@@ -289,7 +291,7 @@ public class FlutterSurfaceView extends SurfaceView implements RenderSurface {
             + width
             + " x "
             + height);
-    flutterRenderer.surfaceChanged(width, height);
+    flutterRenderer.surfaceChanged(getViewId(),width, height);
   }
 
   // FlutterRenderer must be non-null.
@@ -300,6 +302,19 @@ public class FlutterSurfaceView extends SurfaceView implements RenderSurface {
               + " non-null.");
     }
 
-    flutterRenderer.stopRenderingToSurface();
+     flutterRenderer.stopRenderingToSurface(getViewId());
+  }
+
+  public void setViewId(long viewId) {
+    this.viewId = viewId;
+  }
+
+  private long getViewId() {
+    if (viewId == -1) {
+      throw new IllegalStateException(
+              "setViewId must be called first.");
+    }
+
+    return viewId;
   }
 }

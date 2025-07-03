@@ -61,6 +61,24 @@ class Surface {
   FML_DISALLOW_COPY_AND_ASSIGN(Surface);
 };
 
+class SurfaceHolder {
+ public:
+  explicit SurfaceHolder(int64_t view_id, std::unique_ptr<Surface> surface)
+      : view_id_(view_id), surface_(std::move(surface)) {}
+
+  ~SurfaceHolder();
+
+  int64_t GetViewId() const { return view_id_; }
+
+  Surface* GetSurface() const { return surface_.get(); }
+
+ private:
+  int64_t view_id_;
+  std::unique_ptr<Surface> surface_;
+
+  FML_DISALLOW_COPY_AND_ASSIGN(SurfaceHolder);
+};
+
 }  // namespace flutter
 
 #endif  // FLUTTER_FLOW_SURFACE_H_

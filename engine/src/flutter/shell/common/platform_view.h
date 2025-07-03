@@ -101,9 +101,21 @@ class PlatformView {
     /// @param[in]  callback          The callback that's invoked once the shell
     ///                               has attempted to add the view.
     ///
-    virtual void OnPlatformViewAddView(int64_t view_id,
-                                       const ViewportMetrics& viewport_metrics,
-                                       AddViewCallback callback) = 0;
+    virtual void OnPlatformViewAddView(
+        int64_t view_id,
+        const ViewportMetrics& viewport_metrics,
+        AddViewCallback callback,
+        std::unique_ptr<Surface> view_surface = nullptr) = 0;
+
+    virtual void OnPlatformViewAddViewSurface(
+        int64_t view_id,
+
+        AddViewCallback callback,
+        std::unique_ptr<Surface> view_surface) = 0;
+
+    virtual void OnPlatformViewRemoveViewSurface(
+        int64_t view_id,
+        RemoveViewCallback callback) = 0;
 
     /// @brief  Deallocate resources for a removed view and inform
     ///         Dart about the removal.

@@ -21,6 +21,10 @@ GPUSurfaceGLImpeller::GPUSurfaceGLImpeller(
     return;
   }
 
+  FML_LOG(ERROR) << "GPUSurfaceGLImpeller::GPUSurfaceGLImpeller context" << (context == nullptr);
+
+  FML_LOG(ERROR) << "GPUSurfaceGLImpeller::GPUSurfaceGLImpeller context->IsValid()" << (context && context->IsValid());
+
   if (!context || !context->IsValid()) {
     return;
   }

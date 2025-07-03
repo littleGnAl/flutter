@@ -13,6 +13,8 @@ import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.annotation.VisibleForTesting;
+
+import io.flutter.Log;
 import io.flutter.embedding.engine.renderer.FlutterRenderer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -110,6 +112,12 @@ public class AndroidTouchProcessor {
   // Only used on api 25 and below to avoid requerying display metrics.
   private int cachedVerticalScrollFactor;
 
+  private long viewId = IMPLICIT_VIEW_ID;
+
+  public void setViewId(long viewId) {
+    this.viewId = viewId;
+  }
+
   /**
    * Constructs an {@code AndroidTouchProcessor} that will send touch event data to the Flutter
    * execution context represented by the given {@link FlutterRenderer}.
@@ -206,6 +214,7 @@ public class AndroidTouchProcessor {
       throw new AssertionError("Packet position is not on field boundary");
     }
 
+    Log.v(TAG, "onTouchEvent renderer.dispatchPointerDataPacket(packet, packet.position());");
     // Send the packet to Flutter.
     renderer.dispatchPointerDataPacket(packet, packet.position());
 
@@ -248,6 +257,7 @@ public class AndroidTouchProcessor {
     if (packet.position() % (POINTER_DATA_FIELD_COUNT * BYTES_PER_FIELD) != 0) {
       throw new AssertionError("Packet position is not on field boundary.");
     }
+    Log.v(TAG, "renderer.dispatchPointerDataPacket(packet, packet.position());");
     renderer.dispatchPointerDataPacket(packet, packet.position());
     return true;
   }
@@ -282,7 +292,7 @@ public class AndroidTouchProcessor {
     // TODO(dkwingsmt): Use the correct source view ID once Android supports
     // multiple views.
     // https://github.com/flutter/flutter/issues/134405
-    final int viewId = IMPLICIT_VIEW_ID;
+//    final int viewId = IMPLICIT_VIEW_ID;
     final int pointerId = event.getPointerId(pointerIndex);
 
     int pointerKind = getPointerDeviceTypeForToolType(event.getToolType(pointerIndex));

@@ -73,6 +73,8 @@ void AndroidExternalViewEmbedderWrapper::SubmitFlutterView(
     GrDirectContext* context,
     const std::shared_ptr<impeller::AiksContext>& aiks_context,
     std::unique_ptr<SurfaceFrame> frame) {
+
+FML_LOG(ERROR) << "AndroidExternalViewEmbedderWrapper::SubmitFlutterView with viewid: " << flutter_view_id;
   EnsureInitialized();
   if (hcpp_view_embedder_) {
     hcpp_view_embedder_->SubmitFlutterView(flutter_view_id, context,

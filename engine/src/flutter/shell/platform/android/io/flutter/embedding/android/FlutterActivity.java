@@ -904,8 +904,8 @@ public class FlutterActivity extends Activity
             + getFlutterEngine()
             + " evicted by another attaching activity");
     if (delegate != null) {
-      delegate.onDestroyView();
-      delegate.onDetach();
+      // delegate.onDestroyView();
+      // delegate.onDetach();
     }
   }
 

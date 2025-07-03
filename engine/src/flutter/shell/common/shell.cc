@@ -2116,7 +2116,8 @@ bool Shell::OnServiceProtocolReloadAssetFonts(
 
 void Shell::OnPlatformViewAddView(int64_t view_id,
                                   const ViewportMetrics& viewport_metrics,
-                                  AddViewCallback callback) {
+                                  AddViewCallback callback,
+                                  std::unique_ptr<Surface> view_surface) {
   TRACE_EVENT0("flutter", "Shell::AddView");
   FML_DCHECK(is_set_up_);
   FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
@@ -2135,6 +2136,153 @@ void Shell::OnPlatformViewAddView(int64_t view_id,
         }
       });
 }
+
+void Shell::OnPlatformViewAddViewSurface(
+    int64_t view_id,
+
+    AddViewCallback callback,
+    std::unique_ptr<Surface> view_surface) {
+  TRACE_EVENT0("flutter", "Shell::OnPlatformViewAddViewSurface");
+  FML_DCHECK(is_set_up_);
+  FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+  FML_DCHECK(view_id != kFlutterImplicitViewId)
+      << "Unexpected request to add the implicit view #"
+      << kFlutterImplicitViewId << ". This view should never be added.";
+
+  TRACE_EVENT0("flutter", "Shell::OnPlatformViewCreated");
+  FML_DCHECK(is_set_up_);
+  FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+
+  // Prevent any request to change the thread configuration for raster and
+  // platform queues while the platform view is being created.
+  //
+  // This prevents false positives such as this method starts assuming that the
+  // raster and platform queues have a given thread configuration, but then the
+  // configuration is changed by a task, and the assumption is no longer true.
+  //
+  // This incorrect assumption can lead to deadlock.
+  // See `should_post_raster_task` for more.
+  // rasterizer_->DisableThreadMergerIfNeeded();
+
+  // The normal flow executed by this method is that the platform thread is
+  // starting the sequence and waiting on the latch. Later the UI thread posts
+  // raster_task to the raster thread which signals the latch. If the raster and
+  // the platform threads are the same this results in a deadlock as the
+  // raster_task will never be posted to the platform/raster thread that is
+  // blocked on a latch. To avoid the described deadlock, if the raster and the
+  // platform threads are the same, should_post_raster_task will be false, and
+  // then instead of posting a task to the raster thread, the ui thread just
+  // signals the latch and the platform/raster thread follows with executing
+  // raster_task.
+  const bool should_post_raster_task =
+      !task_runners_.GetRasterTaskRunner()->RunsTasksOnCurrentThread();
+
+      FML_LOG(ERROR) << "rasterizer->AddViewSurface begin";
+  auto raster_task = fml::MakeCopyable(
+      [&waiting_for_first_frame = waiting_for_first_frame_,  //
+       rasterizer = rasterizer_->GetWeakPtr(),               //
+       view_id = view_id,
+       surface = std::move(view_surface)  //
+  ]() mutable {
+        if (rasterizer) {
+          // Enables the thread merger which may be used by the external view
+          // embedder.
+          // rasterizer->EnableThreadMergerIfNeeded();
+          FML_LOG(ERROR) << "Frasterizer->AddViewSurface(view_id, std::move(surface));";
+          rasterizer->AddViewSurface(view_id, std::move(surface));
+        }
+
+        // waiting_for_first_frame.store(true);
+        (void)waiting_for_first_frame;
+      });
+
+  auto ui_task = [engine = engine_->GetWeakPtr()] {
+    if (engine) {
+      engine->ScheduleFrame();
+    }
+  };
+
+  // Threading: Capture platform view by raw pointer and not the weak pointer.
+  // We are going to use the pointer on the IO thread which is not safe with a
+  // weak pointer. However, we are preventing the platform view from being
+  // collected by using a latch.
+  // auto* platform_view = platform_view_.get();
+  // FML_DCHECK(platform_view);
+  // fml::AutoResetWaitableEvent latch;
+
+  // auto io_task = [io_manager = io_manager_->GetWeakPtr(), platform_view,
+  //                 ui_task_runner = task_runners_.GetUITaskRunner(), ui_task,
+  //                 raster_task_runner = task_runners_.GetRasterTaskRunner(),
+  //                 raster_task, should_post_raster_task, &latch] {
+  //   if (io_manager && !io_manager->GetResourceContext()) {
+  //     sk_sp<GrDirectContext> resource_context =
+  //         platform_view->CreateResourceContext();
+  //     io_manager->NotifyResourceContextAvailable(resource_context);
+  //   }
+  //   // Step 1: Post a task on the UI thread to tell the engine that it has
+  //   // an output surface.
+  //   fml::TaskRunner::RunNowOrPostTask(ui_task_runner, ui_task);
+
+  //   // Step 2: Tell the raster thread that it should create a surface for
+  //   // its rasterizer.
+  //   if (should_post_raster_task) {
+  //     fml::TaskRunner::RunNowOrPostTask(raster_task_runner, raster_task);
+  //   }
+  //   latch.Signal();
+  // };
+
+  // fml::TaskRunner::RunNowOrPostTask(task_runners_.GetIOTaskRunner(),
+  // io_task);
+
+  // latch.Wait();
+
+  // Step 1: Post a task on the UI thread to tell the engine that it has
+  // an output surface.
+  fml::TaskRunner::RunNowOrPostTask(task_runners_.GetUITaskRunner(), ui_task);
+
+  // Step 2: Tell the raster thread that it should create a surface for
+  // its rasterizer.
+  if (should_post_raster_task) {
+    fml::TaskRunner::RunNowOrPostTask(task_runners_.GetRasterTaskRunner(),
+                                      raster_task);
+  } else {
+    // See comment on should_post_raster_task, in this case the raster_task
+    // wasn't executed, and we just run it here as the platform thread
+    // is the raster thread.
+    raster_task();
+  }
+
+  // if (!should_post_raster_task) {
+  //   // See comment on should_post_raster_task, in this case the raster_task
+  //   // wasn't executed, and we just run it here as the platform thread
+  //   // is the raster thread.
+  //   raster_task();
+  // }
+  // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
+}
+
+void Shell::OnPlatformViewRemoveViewSurface(
+        int64_t view_id,
+        RemoveViewCallback callback) {
+    TRACE_EVENT0("flutter", "Shell::OnPlatformViewAddViewSurface");
+    FML_DCHECK(is_set_up_);
+    FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+    FML_DCHECK(view_id != kFlutterImplicitViewId)
+        << "Unexpected request to add the implicit view #"
+        << kFlutterImplicitViewId << ". This view should never be added.";
+
+      task_runners_.GetRasterTaskRunner()->PostTask(
+      [rasterizer = rasterizer_->GetWeakPtr(), view_id, callback = std::move(callback), removed=true]() {
+        if (rasterizer) {
+          rasterizer->RemoveViewSurface(view_id);
+        }
+        // Only call the callback after it is known for certain that the
+        // raster thread will not try to use resources associated with
+        // the view.
+        callback(removed);
+      });
+
+  }
 
 void Shell::OnPlatformViewRemoveView(int64_t view_id,
                                      RemoveViewCallback callback) {

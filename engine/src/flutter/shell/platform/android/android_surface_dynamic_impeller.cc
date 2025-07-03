@@ -30,6 +30,7 @@ void AndroidSurfaceDynamicImpeller::TeardownOnScreenContext() {
 
 std::unique_ptr<Surface> AndroidSurfaceDynamicImpeller::CreateGPUSurface(
     GrDirectContext* gr_context) {
+      FML_LOG(ERROR) << "AndroidSurfaceDynamicImpeller::CreateGPUSurface";
   if (vulkan_surface_) {
     if (window_) {
       vulkan_surface_->SetNativeWindow(window_, jni_facade_);

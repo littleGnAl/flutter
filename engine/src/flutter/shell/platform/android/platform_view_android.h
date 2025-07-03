@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <map>
 
 #include <android/hardware_buffer_jni.h>
 #include "flutter/fml/platform/android/scoped_java_ref.h"
@@ -64,13 +65,24 @@ class PlatformViewAndroid final : public PlatformView {
 
   void NotifyCreated(fml::RefPtr<AndroidNativeWindow> native_window);
 
+  void NotifyCreated(int64_t view_id, fml::RefPtr<AndroidNativeWindow> native_window);
+
   void NotifySurfaceWindowChanged(
       fml::RefPtr<AndroidNativeWindow> native_window);
 
+        void NotifySurfaceWindowChanged(
+            int64_t view_id,
+      fml::RefPtr<AndroidNativeWindow> native_window);
+
+
   void NotifyChanged(const SkISize& size);
+
+  void NotifyChanged(int64_t view_id,const SkISize& size);
 
   // |PlatformView|
   void NotifyDestroyed() override;
+
+  void NotifyDestroyed(int64_t view_id);
 
   void DispatchPlatformMessage(JNIEnv* env,
                                std::string name,
@@ -135,6 +147,7 @@ class PlatformViewAndroid final : public PlatformView {
   PlatformViewAndroidDelegate platform_view_android_delegate_;
 
   std::unique_ptr<AndroidSurface> android_surface_;
+  std::unordered_map<int64_t, std::unique_ptr<AndroidSurface>> android_surfaces_;
   std::shared_ptr<PlatformMessageHandlerAndroid> platform_message_handler_;
   bool android_meets_hcpp_criteria_ = false;
 

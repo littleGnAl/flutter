@@ -189,7 +189,10 @@ void RuntimeController::AddView(int64_t view_id,
     ScheduleFrame();
   }
 
+
   callback(added);
+
+  FML_LOG(INFO) << "AddView done.";
 }
 
 bool RuntimeController::RemoveView(int64_t view_id) {

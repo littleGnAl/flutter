@@ -583,9 +583,22 @@ class Shell final : public PlatformView::Delegate,
   void OnPlatformViewScheduleFrame() override;
 
   // |PlatformView::Delegate|
-  void OnPlatformViewAddView(int64_t view_id,
-                             const ViewportMetrics& viewport_metrics,
-                             AddViewCallback callback) override;
+  void OnPlatformViewAddView(
+      int64_t view_id,
+      const ViewportMetrics& viewport_metrics,
+      AddViewCallback callback,
+      std::unique_ptr<Surface> view_surface = nullptr) override;
+
+  // |PlatformView::Delegate|
+  void OnPlatformViewAddViewSurface(
+      int64_t view_id,
+
+      AddViewCallback callback,
+      std::unique_ptr<Surface> view_surface) override;
+
+    void OnPlatformViewRemoveViewSurface(
+        int64_t view_id,
+        RemoveViewCallback callback) override;
 
   // |PlatformView::Delegate|
   void OnPlatformViewRemoveView(int64_t view_id,

@@ -9,6 +9,7 @@
 #include <memory>
 #include <utility>
 
+#include "common/constants.h"
 #include "common/settings.h"
 #include "flutter/common/graphics/texture.h"
 #include "flutter/fml/synchronization/waitable_event.h"
@@ -201,6 +202,109 @@ void PlatformViewAndroid::NotifyCreated(
   PlatformView::NotifyCreated();
 }
 
+void PlatformViewAndroid::NotifyCreated(
+    int64_t view_id,
+    fml::RefPtr<AndroidNativeWindow> native_window) {
+
+  if (view_id == kFlutterImplicitViewId && android_surface_) {
+    InstallFirstFrameCallback();
+
+    fml::AutoResetWaitableEvent latch;
+    fml::TaskRunner::RunNowOrPostTask(
+        task_runners_.GetRasterTaskRunner(),
+        [&latch, surface = android_surface_.get(),
+         native_window = std::move(native_window), jni_facade = jni_facade_]() {
+          surface->SetNativeWindow(native_window, jni_facade);
+          latch.Signal();
+        });
+    latch.Wait();
+
+    {
+      std::unique_ptr<Surface> surface;
+      // Threading: We want to use the platform view on the non-platform thread.
+      // Using the weak pointer is illegal. But, we are going to introduce a latch
+      // so that the platform view is not collected till the surface is obtained.
+      auto* platform_view = this;
+      fml::ManualResetWaitableEvent latch;
+      fml::TaskRunner::RunNowOrPostTask(
+          task_runners_.GetRasterTaskRunner(),
+          [platform_view,view_id, &surface, &latch]() {
+            if (view_id == kFlutterImplicitViewId) {
+              surface = platform_view->CreateRenderingSurface();
+            }
+            if (surface && !surface->IsValid()) {
+              surface.reset();
+            }
+            latch.Signal();
+          });
+      latch.Wait();
+      if (!surface) {
+        FML_LOG(ERROR) << "Failed to create platform view rendering surface";
+        return;
+      }
+
+      delegate_.OnPlatformViewCreated(std::move(surface));
+    }
+  } else {
+    std::unique_ptr<AndroidSurface> android_surface =
+        surface_factory_->CreateSurface();
+
+    InstallFirstFrameCallback();
+
+    fml::AutoResetWaitableEvent latch;
+    fml::TaskRunner::RunNowOrPostTask(
+        task_runners_.GetRasterTaskRunner(),
+        [&latch, surface = android_surface.get(),
+         native_window = std::move(native_window), jni_facade = jni_facade_]() {
+          surface->SetNativeWindow(native_window, jni_facade);
+          surface->SetupImpellerSurface();
+          latch.Signal();
+        });
+    latch.Wait();
+
+    {
+      std::unique_ptr<Surface> surface;
+      // Threading: We want to use the platform view on the non-platform thread.
+      // Using the weak pointer is illegal. But, we are going to introduce a latch
+      // so that the platform view is not collected till the surface is obtained.
+      auto* platform_view = this;
+      fml::ManualResetWaitableEvent latch;
+      fml::TaskRunner::RunNowOrPostTask(
+          task_runners_.GetRasterTaskRunner(),
+          [platform_view, &surface, android_surface=android_surface.get(),android_context=android_context_.get(), &latch]() {
+            (void)platform_view;
+            surface = android_surface->CreateGPUSurface(
+        android_context->GetMainSkiaContext().get());
+        FML_LOG(ERROR) << "Failed to android_surface->CreateGPUSurface" << (surface != nullptr);
+            if (surface && !surface->IsValid()) {
+              FML_LOG(ERROR) << "Failed to android_surface->CreateGPUSurface";
+              surface.reset();
+            }
+            latch.Signal();
+          });
+      latch.Wait();
+      if (!surface) {
+        FML_LOG(ERROR) << "Failed to create platform view rendering surface";
+        return;
+      }
+
+      FML_LOG(ERROR) << "OnPlatformViewAddViewSurface" << view_id;
+      delegate_.OnPlatformViewAddViewSurface(
+          view_id,                 //
+          [view_id](bool added) {  //
+            if (!added) {
+              FML_LOG(ERROR) << "Failed to add view with id: " << view_id;
+            }
+          },                    //
+          std::move(surface));  //
+    }
+
+    android_surfaces_.emplace(view_id, std::move(android_surface));
+  }
+
+
+}
+
 void PlatformViewAndroid::NotifySurfaceWindowChanged(
     fml::RefPtr<AndroidNativeWindow> native_window) {
   if (android_surface_) {
@@ -219,6 +323,38 @@ void PlatformViewAndroid::NotifySurfaceWindowChanged(
   PlatformView::ScheduleFrame();
 }
 
+        void PlatformViewAndroid::NotifySurfaceWindowChanged(
+            int64_t view_id,
+      fml::RefPtr<AndroidNativeWindow> native_window) {
+
+          if (view_id == kFlutterImplicitViewId && android_surface_) {
+    fml::AutoResetWaitableEvent latch;
+    fml::TaskRunner::RunNowOrPostTask(
+        task_runners_.GetRasterTaskRunner(),
+        [&latch, surface = android_surface_.get(),
+         native_window = std::move(native_window), jni_facade = jni_facade_]() {
+          surface->TeardownOnScreenContext();
+          surface->SetNativeWindow(native_window, jni_facade);
+          latch.Signal();
+        });
+    latch.Wait();
+  } else {
+        fml::AutoResetWaitableEvent latch;
+        auto *android_surface = android_surfaces_[view_id].get();
+    fml::TaskRunner::RunNowOrPostTask(
+        task_runners_.GetRasterTaskRunner(),
+        [&latch, surface = android_surface,
+         native_window = std::move(native_window), jni_facade = jni_facade_]() {
+          surface->TeardownOnScreenContext();
+          surface->SetNativeWindow(native_window, jni_facade);
+          latch.Signal();
+        });
+    latch.Wait();
+  }
+
+  PlatformView::ScheduleFrame();
+      }
+
 void PlatformViewAndroid::NotifyDestroyed() {
   PlatformView::NotifyDestroyed();
 
@@ -234,6 +370,49 @@ void PlatformViewAndroid::NotifyDestroyed() {
   }
 }
 
+void PlatformViewAndroid::NotifyDestroyed(long view_id) {
+  auto *android_surface = android_surfaces_[view_id].get();
+
+  {
+    fml::AutoResetWaitableEvent latch;
+        delegate_.OnPlatformViewRemoveViewSurface(
+          view_id,                 //
+          [&latch,view_id, &android_surfaces=android_surfaces_, this](bool remove) {  //
+            if (!remove) {
+              FML_LOG(ERROR) << "Failed to add view with id: " << view_id;
+            }
+
+            android_surfaces.erase(view_id);
+
+            latch.Signal();
+
+
+          });  //
+    latch.Wait();
+  }
+
+  if (android_surfaces_.empty()) {
+    PlatformView::NotifyDestroyed();
+  }
+
+  // if (android_surface_) {
+  {
+      fml::AutoResetWaitableEvent latch;
+    fml::TaskRunner::RunNowOrPostTask(
+        task_runners_.GetRasterTaskRunner(),
+        [&latch,view_id, surface = android_surface]() {
+
+
+          // TODO(littlegnal): Remove from raster thread
+          surface->TeardownOnScreenContext();
+
+          latch.Signal();
+        });
+    latch.Wait();
+  }
+  // }
+}
+
 void PlatformViewAndroid::NotifyChanged(const SkISize& size) {
   if (!android_surface_) {
     return;
@@ -246,6 +425,31 @@ void PlatformViewAndroid::NotifyChanged(const SkISize& size) {
         latch.Signal();
       });
   latch.Wait();
+}
+
+void PlatformViewAndroid::NotifyChanged(int64_t view_id,const SkISize& size) {
+  if (view_id == kFlutterImplicitViewId && android_surface_) {
+    fml::AutoResetWaitableEvent latch;
+    fml::TaskRunner::RunNowOrPostTask(
+        task_runners_.GetRasterTaskRunner(),  //
+        [&latch, surface = android_surface_.get(), size]() {
+          surface->OnScreenSurfaceResize(size);
+          latch.Signal();
+        });
+    latch.Wait();
+  } else {
+    auto *android_surface = android_surfaces_[view_id].get();
+
+    fml::AutoResetWaitableEvent latch;
+    fml::TaskRunner::RunNowOrPostTask(
+        task_runners_.GetRasterTaskRunner(),  //
+        [&latch, surface = android_surface, size]() {
+          surface->OnScreenSurfaceResize(size);
+          latch.Signal();
+        });
+    latch.Wait();
+  }
+
 }
 
 void PlatformViewAndroid::DispatchPlatformMessage(JNIEnv* env,
