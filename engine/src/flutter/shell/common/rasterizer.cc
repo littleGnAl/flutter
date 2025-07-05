@@ -925,6 +925,10 @@ std::unique_ptr<FrameItem> Rasterizer::DrawToSurfacesUnsafe(
   //   }
   // }
 
+    if (!view_surfaces_.count(view_id)) {
+      continue;
+    }
+
     DrawSurfaceStatus status = DrawToSurfaceUnsafe(
         view_id, *layer_tree, device_pixel_ratio, presentation_time);
     FML_DCHECK(status != DrawSurfaceStatus::kDiscarded);

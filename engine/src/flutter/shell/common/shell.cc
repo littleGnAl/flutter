@@ -2177,19 +2177,23 @@ void Shell::OnPlatformViewAddViewSurface(
   const bool should_post_raster_task =
       !task_runners_.GetRasterTaskRunner()->RunsTasksOnCurrentThread();
 
+      PlatformView* platform_view_ptr = platform_view_.get();
+
       FML_LOG(ERROR) << "rasterizer->AddViewSurface begin";
   auto raster_task = fml::MakeCopyable(
       [&waiting_for_first_frame = waiting_for_first_frame_,  //
        rasterizer = rasterizer_->GetWeakPtr(),               //
        view_id = view_id,
-       surface = std::move(view_surface)  //
+       surface = std::move(view_surface),  //
+       platform_view_ptr //
   ]() mutable {
         if (rasterizer) {
           // Enables the thread merger which may be used by the external view
           // embedder.
           // rasterizer->EnableThreadMergerIfNeeded();
           FML_LOG(ERROR) << "Frasterizer->AddViewSurface(view_id, std::move(surface));";
-          rasterizer->AddViewSurface(view_id, std::move(surface));
+          auto view_embedder = platform_view_ptr->CreateExternalViewEmbedder();
+          rasterizer->AddViewSurface(view_id, std::move(surface), view_embedder);
         }
 
         // waiting_for_first_frame.store(true);
@@ -2267,9 +2271,9 @@ void Shell::OnPlatformViewRemoveViewSurface(
     TRACE_EVENT0("flutter", "Shell::OnPlatformViewAddViewSurface");
     FML_DCHECK(is_set_up_);
     FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
-    FML_DCHECK(view_id != kFlutterImplicitViewId)
-        << "Unexpected request to add the implicit view #"
-        << kFlutterImplicitViewId << ". This view should never be added.";
+    // FML_DCHECK(view_id != kFlutterImplicitViewId)
+    //     << "Unexpected request to add the implicit view #"
+    //     << kFlutterImplicitViewId << ". This view should never be added.";
 
       task_runners_.GetRasterTaskRunner()->PostTask(
       [rasterizer = rasterizer_->GetWeakPtr(), view_id, callback = std::move(callback), removed=true]() {

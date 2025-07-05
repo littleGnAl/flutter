@@ -356,31 +356,41 @@ void PlatformViewAndroid::NotifySurfaceWindowChanged(
       }
 
 void PlatformViewAndroid::NotifyDestroyed() {
-  PlatformView::NotifyDestroyed();
+  // PlatformView::NotifyDestroyed();
 
-  if (android_surface_) {
-    fml::AutoResetWaitableEvent latch;
-    fml::TaskRunner::RunNowOrPostTask(
-        task_runners_.GetRasterTaskRunner(),
-        [&latch, surface = android_surface_.get()]() {
-          surface->TeardownOnScreenContext();
-          latch.Signal();
-        });
-    latch.Wait();
-  }
+  // if (android_surface_) {
+  //   fml::AutoResetWaitableEvent latch;
+  //   fml::TaskRunner::RunNowOrPostTask(
+  //       task_runners_.GetRasterTaskRunner(),
+  //       [&latch, surface = android_surface_.get()]() {
+  //         surface->TeardownOnScreenContext();
+  //         latch.Signal();
+  //       });
+  //   latch.Wait();
+  // }
 }
 
 void PlatformViewAndroid::NotifyDestroyed(long view_id) {
+  if (!android_surfaces_.count(view_id)) {
+    return;
+  }
+
+  if (view_id == kFlutterImplicitViewId) {
+    PlatformView::NotifyDestroyed();
+  }
+
   auto *android_surface = android_surfaces_[view_id].get();
 
   {
     fml::AutoResetWaitableEvent latch;
         delegate_.OnPlatformViewRemoveViewSurface(
           view_id,                 //
-          [&latch,view_id, &android_surfaces=android_surfaces_, this](bool remove) {  //
+          [&latch,view_id, android_surface,&android_surfaces=android_surfaces_](bool remove) {  //
             if (!remove) {
               FML_LOG(ERROR) << "Failed to add view with id: " << view_id;
             }
+
+            android_surface->TeardownOnScreenContext();
 
             android_surfaces.erase(view_id);
 
@@ -391,25 +401,25 @@ void PlatformViewAndroid::NotifyDestroyed(long view_id) {
     latch.Wait();
   }
 
-  if (android_surfaces_.empty()) {
-    PlatformView::NotifyDestroyed();
-  }
+  // if (android_surfaces_.empty()) {
+  //   PlatformView::NotifyDestroyed();
+  // }
 
-  // if (android_surface_) {
-  {
-      fml::AutoResetWaitableEvent latch;
-    fml::TaskRunner::RunNowOrPostTask(
-        task_runners_.GetRasterTaskRunner(),
-        [&latch,view_id, surface = android_surface]() {
+  // // if (android_surface_) {
+  // {
+  //     fml::AutoResetWaitableEvent latch;
+  //   fml::TaskRunner::RunNowOrPostTask(
+  //       task_runners_.GetRasterTaskRunner(),
+  //       [&latch, surface = android_surface]() {
 
 
-          // TODO(littlegnal): Remove from raster thread
-          surface->TeardownOnScreenContext();
+  //         // TODO(littlegnal): Remove from raster thread
+  //         surface->TeardownOnScreenContext();
 
-          latch.Signal();
-        });
-    latch.Wait();
-  }
+  //         latch.Signal();
+  //       });
+  //   latch.Wait();
+  // }
   // }
 }
 

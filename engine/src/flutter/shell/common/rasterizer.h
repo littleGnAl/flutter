@@ -10,6 +10,7 @@
 #include <optional>
 #include <unordered_map>
 
+#include "flutter/common/constants.h"
 #include "flutter/common/settings.h"
 #include "flutter/common/task_runners.h"
 #include "flutter/display_list/image/dl_image.h"
@@ -678,13 +679,22 @@ class Rasterizer final : public SnapshotDelegate,
 
   // |SnapshotController::Delegate|
   const std::unique_ptr<Surface>& GetSurface() const override {
-    return surface_;
+    const std::unique_ptr<Surface>& surface = view_surfaces_.at(kFlutterImplicitViewId);
+
+    // return surface_;
+    return surface;
   }
 
   // |SnapshotController::Delegate|
   bool IsAiksContextInitialized() const override {
-#if IMPELLER_SUPPORTS_RENDERING
-    return surface_ && surface_->GetAiksContext();
+    #if IMPELLER_SUPPORTS_RENDERING
+    auto surface_iter = view_surfaces_.find(kFlutterImplicitViewId);
+    if (surface_iter != view_surfaces_.end()) {
+      return surface_iter->second->GetAiksContext() != nullptr;
+    }
+    return false;
+// #if IMPELLER_SUPPORTS_RENDERING
+//     return surface_ && surface_->GetAiksContext();
 #else
     return false;
 #endif
@@ -692,9 +702,17 @@ class Rasterizer final : public SnapshotDelegate,
 
   // |SnapshotController::Delegate|
   std::shared_ptr<impeller::AiksContext> GetAiksContext() const override {
+    //     auto surface_iter = view_surfaces_.find(kFlutterImplicitViewId);
+    // if (surface_iter != view_surfaces_.end()) {
+    //   return surface_iter->second->GetAiksContext();
+    // }
 #if IMPELLER_SUPPORTS_RENDERING
-    if (surface_) {
-      return surface_->GetAiksContext();
+    // if (surface_) {
+    //   return surface_->GetAiksContext();
+    // }
+            auto surface_iter = view_surfaces_.find(kFlutterImplicitViewId);
+    if (surface_iter != view_surfaces_.end()) {
+      return surface_iter->second->GetAiksContext();
     }
     if (auto context = impeller_context_->GetContext()) {
       return std::make_shared<impeller::AiksContext>(
