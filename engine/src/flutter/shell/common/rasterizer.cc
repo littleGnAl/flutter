@@ -239,15 +239,15 @@ void Rasterizer::RemoveViewSurface(int64_t view_id) {
 
   auto *surface = found->second.get();
   if (surface) {
-    auto context_switch = surface->MakeRenderContextCurrent();
-    if (context_switch->GetResult()) {
-      compositor_context_->OnGrContextDestroyed();
-#if !SLIMPELLER
-      if (auto* context = surface->GetContext()) {
-        context->purgeUnlockedResources(GrPurgeResourceOptions::kAllResources);
-      }
-#endif  //  !SLIMPELLER
-    }
+//     auto context_switch = surface->MakeRenderContextCurrent();
+//     if (context_switch->GetResult()) {
+//       compositor_context_->OnGrContextDestroyed();
+// #if !SLIMPELLER
+//       if (auto* context = surface->GetContext()) {
+//         context->purgeUnlockedResources(GrPurgeResourceOptions::kAllResources);
+//       }
+// #endif  //  !SLIMPELLER
+//     }
     // surface_.reset();
 
     view_surfaces_.erase(view_id);
@@ -261,8 +261,17 @@ void Rasterizer::TeardownExternalViewEmbedder() {
   //   external_view_embedder_->Teardown();
   // }
 
-  for (auto it : external_view_embedders_) {
-    it.second->Teardown();
+  // for (auto it : external_view_embedders_) {
+  //   it.second->Teardown();
+  // }
+
+    auto external_view_embedder_iter = external_view_embedders_.find(kFlutterImplicitViewId);
+  if (external_view_embedder_iter != external_view_embedders_.end()) {
+    // if (external_view_embedder_) {
+    //   external_view_embedder_->CollectView(view_id);
+    // }
+
+    external_view_embedder_iter->second->Teardown();
   }
 }
 
