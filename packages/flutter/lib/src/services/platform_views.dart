@@ -12,6 +12,7 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/widgets.dart';
 
 import 'message_codec.dart';
 import 'system_channels.dart';
@@ -132,6 +133,7 @@ class PlatformViewsService {
   /// In cases where that is not supported, it falls back to using
   /// Virtual Display.
   static AndroidViewController initAndroidView({
+    required int flutterViewId,
     required int id,
     required String viewType,
     required TextDirection layoutDirection,
@@ -142,6 +144,7 @@ class PlatformViewsService {
     assert(creationParams == null || creationParamsCodec != null);
 
     final TextureAndroidViewController controller = TextureAndroidViewController._(
+      flutterViewId: flutterViewId,
       viewId: id,
       viewType: viewType,
       layoutDirection: layoutDirection,
@@ -162,6 +165,7 @@ class PlatformViewsService {
   // Fallback logic for TLHC or HC lives in
   // engine/src/flutter/shell/platform/android/io/flutter/plugin/platform/PlatformViewsController.java
   static SurfaceAndroidViewController initSurfaceAndroidView({
+    required int flutterViewId,
     required int id,
     required String viewType,
     required TextDirection layoutDirection,
@@ -172,6 +176,7 @@ class PlatformViewsService {
     assert(creationParams == null || creationParamsCodec != null);
 
     final SurfaceAndroidViewController controller = SurfaceAndroidViewController._(
+      flutterViewId: flutterViewId,
       viewId: id,
       viewType: viewType,
       layoutDirection: layoutDirection,
@@ -192,6 +197,7 @@ class PlatformViewsService {
   /// [initAndroidView] or [initSurfaceAndroidView] instead.
   /// Always creates a "Hybrid Composition (HC)" view.
   static ExpensiveAndroidViewController initExpensiveAndroidView({
+    required int flutterViewId,
     required int id,
     required String viewType,
     required TextDirection layoutDirection,
@@ -200,6 +206,7 @@ class PlatformViewsService {
     VoidCallback? onFocus,
   }) {
     final ExpensiveAndroidViewController controller = ExpensiveAndroidViewController._(
+      flutterViewId: flutterViewId,
       viewId: id,
       viewType: viewType,
       layoutDirection: layoutDirection,
@@ -220,6 +227,7 @@ class PlatformViewsService {
   /// API 34 or newer.
   /// Always creates a "Hybrid Composition++ (HCPP)" view.
   static HybridAndroidViewController initHybridAndroidView({
+    required int flutterViewId,
     required int id,
     required String viewType,
     required TextDirection layoutDirection,
@@ -228,6 +236,7 @@ class PlatformViewsService {
     VoidCallback? onFocus,
   }) {
     final HybridAndroidViewController controller = HybridAndroidViewController._(
+      flutterViewId: flutterViewId,
       viewId: id,
       viewType: viewType,
       layoutDirection: layoutDirection,
@@ -713,6 +722,7 @@ class _CreationParams {
 // TODO(bparrishMines): Remove abstract methods that are not required by all subclasses.
 abstract class AndroidViewController extends PlatformViewController {
   AndroidViewController._({
+    required this.flutterViewId,
     required this.viewId,
     required String viewType,
     required TextDirection layoutDirection,
@@ -774,6 +784,9 @@ abstract class AndroidViewController extends PlatformViewController {
 
   /// Android's [InputDevice.SOURCE_TOUCHPAD](https://developer.android.com/reference/android/view/InputDevice#SOURCE_TOUCHPAD)
   static const int kInputDeviceSourceTouchPad = 1048584;
+
+  @override
+  final int flutterViewId;
 
   /// The unique identifier of the Android view controlled by this controller.
   @override
@@ -1028,6 +1041,7 @@ abstract class AndroidViewController extends PlatformViewController {
 /// and is defined for backward compatibility.
 class SurfaceAndroidViewController extends AndroidViewController {
   SurfaceAndroidViewController._({
+    required super.flutterViewId,
     required super.viewId,
     required super.viewType,
     required super.layoutDirection,
@@ -1049,6 +1063,7 @@ class SurfaceAndroidViewController extends AndroidViewController {
     );
 
     final dynamic response = await _AndroidViewControllerInternals.sendCreateMessage(
+      flutterViewId: flutterViewId,
       viewId: viewId,
       viewType: _viewType,
       hybrid: false,
@@ -1099,6 +1114,7 @@ class SurfaceAndroidViewController extends AndroidViewController {
 // "Hybrid Composition" controller.
 class ExpensiveAndroidViewController extends AndroidViewController {
   ExpensiveAndroidViewController._({
+    required super.flutterViewId,
     required super.viewId,
     required super.viewType,
     required super.layoutDirection,
@@ -1114,6 +1130,7 @@ class ExpensiveAndroidViewController extends AndroidViewController {
   @override
   Future<void> _sendCreateMessage({required Size? size, Offset? position}) async {
     await _AndroidViewControllerInternals.sendCreateMessage(
+      flutterViewId: flutterViewId,
       viewId: viewId,
       viewType: _viewType,
       hybrid: true,
@@ -1154,6 +1171,7 @@ class ExpensiveAndroidViewController extends AndroidViewController {
 // "HCPP"
 class HybridAndroidViewController extends AndroidViewController {
   HybridAndroidViewController._({
+    required super.flutterViewId,
     required super.viewId,
     required super.viewType,
     required super.layoutDirection,
@@ -1174,6 +1192,7 @@ class HybridAndroidViewController extends AndroidViewController {
   @override
   Future<void> _sendCreateMessage({required Size? size, Offset? position}) async {
     await _AndroidViewControllerInternals.sendCreateMessage(
+      flutterViewId: flutterViewId,
       viewId: viewId,
       viewType: _viewType,
       hybrid: true,
@@ -1224,6 +1243,7 @@ class HybridAndroidViewController extends AndroidViewController {
 // "TLHC" or "VD"
 class TextureAndroidViewController extends AndroidViewController {
   TextureAndroidViewController._({
+    required super.flutterViewId,
     required super.viewId,
     required super.viewType,
     required super.layoutDirection,
@@ -1246,6 +1266,7 @@ class TextureAndroidViewController extends AndroidViewController {
 
     _internals.textureId =
         await _AndroidViewControllerInternals.sendCreateMessage(
+              flutterViewId: flutterViewId,
               viewId: viewId,
               viewType: _viewType,
               hybrid: false,
@@ -1295,6 +1316,7 @@ abstract class _AndroidViewControllerInternals {
   // on the native side, the return type is different. Callers should cast
   // depending on the possible return types for their arguments.
   static Future<dynamic> sendCreateMessage({
+    required int flutterViewId,
     required int viewId,
     required String viewType,
     required TextDirection layoutDirection,
@@ -1306,6 +1328,7 @@ abstract class _AndroidViewControllerInternals {
     Offset? position,
   }) {
     final Map<String, dynamic> args = <String, dynamic>{
+      'flutterViewId': flutterViewId,
       'id': viewId,
       'viewType': viewType,
       'direction': AndroidViewController._getAndroidDirection(layoutDirection),
@@ -1580,6 +1603,8 @@ class AppKitViewController extends DarwinPlatformViewController {
 ///
 /// Used by [PlatformViewSurface] to interface with the platform view it embeds.
 abstract class PlatformViewController {
+  int get flutterViewId;
+
   /// The viewId associated with this controller.
   ///
   /// The viewId should always be unique and non-negative.

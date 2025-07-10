@@ -29,6 +29,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 import androidx.core.view.inputmethod.EditorInfoCompat;
 import io.flutter.Log;
+import io.flutter.embedding.android.FlutterView;
 import io.flutter.embedding.android.KeyboardManager;
 import io.flutter.embedding.engine.systemchannels.ScribeChannel;
 import io.flutter.embedding.engine.systemchannels.TextInputChannel;
@@ -42,7 +43,9 @@ import java.util.HashMap;
 public class TextInputPlugin implements ListenableEditingState.EditingStateWatcher {
   private static final String TAG = "TextInputPlugin";
 
-  @NonNull private final View mView;
+//  @NonNull private final View mView;
+
+  @NonNull private final HashMap<Long, FlutterView> mViews;
   @NonNull private final InputMethodManager mImm;
   @NonNull private final AutofillManager afm;
   @NonNull private final ScribeChannel scribeChannel;
@@ -74,7 +77,8 @@ public class TextInputPlugin implements ListenableEditingState.EditingStateWatch
       @NonNull ScribeChannel scribeChannel,
       @NonNull PlatformViewsController platformViewsController,
       @NonNull PlatformViewsController2 platformViewsController2) {
-    mView = view;
+    mViews = new HashMap<>();
+//    mView = view;
     // Create a default object.
     mEditable = new ListenableEditingState(null, mView);
     mImm = (InputMethodManager) view.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -166,6 +170,10 @@ public class TextInputPlugin implements ListenableEditingState.EditingStateWatch
     this.platformViewsController.attachTextInputPlugin(this);
     this.platformViewsController2 = platformViewsController2;
     this.platformViewsController2.attachTextInputPlugin(this);
+  }
+
+  public void attachView(FlutterView view) {
+    mViews.put(view.getViewId(),view);
   }
 
   @NonNull
@@ -415,6 +423,7 @@ public class TextInputPlugin implements ListenableEditingState.EditingStateWatch
     if (configuration == null
         || configuration.inputType == null
         || configuration.inputType.type != TextInputChannel.TextInputType.NONE) {
+      final View view = mViews.get();
       view.requestFocus();
       mImm.showSoftInput(view, 0);
     } else {

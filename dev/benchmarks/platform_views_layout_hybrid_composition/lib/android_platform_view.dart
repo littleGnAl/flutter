@@ -31,6 +31,7 @@ class AndroidPlatformView extends StatelessWidget {
       },
       onCreatePlatformView: (PlatformViewCreationParams params) {
         return PlatformViewsService.initExpensiveAndroidView(
+            flutterViewId: params.flutterViewId,
             id: params.id,
             viewType: viewType,
             layoutDirection: TextDirection.ltr,

@@ -10,6 +10,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+// import 'package:flutter/widgets.dart';
 
 import '_html_element_view_io.dart' if (dart.library.js_util) '_html_element_view_web.dart';
 import 'basic.dart';
@@ -17,6 +18,7 @@ import 'debug.dart';
 import 'focus_manager.dart';
 import 'focus_scope.dart';
 import 'framework.dart';
+import 'view.dart';
 
 // Examples can assume:
 // PlatformViewController createFooWebView(PlatformViewCreationParams params) { return (null as dynamic) as PlatformViewController; }
@@ -1107,11 +1109,14 @@ class _AppKitPlatformView extends _DarwinPlatformView<AppKitViewController, Rend
 ///  * [CreatePlatformViewCallback] which uses this object to create a [PlatformViewController].
 class PlatformViewCreationParams {
   const PlatformViewCreationParams._({
+    required this.flutterViewId,
     required this.id,
     required this.viewType,
     required this.onPlatformViewCreated,
     required this.onFocusChanged,
   });
+
+  final int flutterViewId;
 
   /// The unique identifier for the new platform view.
   ///
@@ -1269,6 +1274,7 @@ class _PlatformViewLinkState extends State<PlatformViewLink> {
     _id = platformViewsRegistry.getNextPlatformViewId();
     _controller = widget._onCreatePlatformView(
       PlatformViewCreationParams._(
+        flutterViewId: View.of(context).viewId,
         id: _id!,
         viewType: widget.viewType,
         onPlatformViewCreated: _onPlatformViewCreated,
