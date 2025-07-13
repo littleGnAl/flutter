@@ -12,6 +12,7 @@
 
 #include "flutter/assets/native_assets.h"
 #include "flutter/common/settings.h"
+#include "flutter/common/constants.h"
 #include "flutter/fml/trace_event.h"
 #include "flutter/impeller/core/runtime_types.h"
 #include "flutter/lib/ui/text/font_collection.h"
@@ -219,6 +220,14 @@ Engine::RunStatus Engine::Run(RunConfiguration configuration) {
     FML_LOG(ERROR) << "Engine run configuration was invalid.";
     return RunStatus::Failure;
   }
+  engine_id_ = configuration.GetEngineId().value();
+
+      static int64_t next_view_id = kFlutterImplicitViewId;
+  FML_LOG(ERROR) << "next_view_id: " << next_view_id;
+  // // Add the implicit view with empty metrics.
+  AddView(next_view_id++, ViewportMetrics{}, [](bool added) {
+    FML_DCHECK(added) << "Failed to add the implicit view: " << next_view_id;
+  });
 
   last_entry_point_ = configuration.GetEntrypoint();
   last_entry_point_library_ = configuration.GetEntrypointLibrary();
@@ -229,62 +238,87 @@ Engine::RunStatus Engine::Run(RunConfiguration configuration) {
 
   UpdateAssetManager(configuration.GetAssetManager());
 
-  if (runtime_controller_->IsRootIsolateRunning()) {
-    return RunStatus::FailureAlreadyRunning;
-  }
+  FML_DLOG(ERROR) << "Engine::Run xxxx";
 
-  // If the embedding prefetched the default font manager, then set up the
-  // font manager later in the engine launch process.  This makes it less
-  // likely that the setup will need to wait for the prefetch to complete.
-  auto root_isolate_create_callback = [&]() {
-    if (settings_.prefetched_default_font_manager) {
-      SetupDefaultFontManager();
-    }
-  };
+  bool is_root_isolate_running = runtime_controller_->IsRootIsolateRunning();
+  // if (is_root_isolate_running && !IsSharedIsolateMode()) {
+  //   return RunStatus::FailureAlreadyRunning;
+  // }
+  //   if (is_root_isolate_running) {
+  //   return RunStatus::FailureAlreadyRunning;
+  // }
 
-  if (settings_.merged_platform_ui_thread ==
-      Settings::MergedPlatformUIThread::kMergeAfterLaunch) {
-    // Queue a task to the UI task runner that sets the owner of the root
-    // isolate.  This task runs after the thread merge and will therefore be
-    // executed on the platform thread.  The task will run before any tasks
-    // queued by LaunchRootIsolate that execute the app's Dart code.
-    task_runners_.GetUITaskRunner()->PostTask([engine = GetWeakPtr()]() {
-      if (engine) {
-        engine->runtime_controller_->SetRootIsolateOwnerToCurrentThread();
+  FML_DLOG(ERROR) << "Engine::Run 11111";
+
+  if (!is_root_isolate_running) {
+
+    // If the embedding prefetched the default font manager, then set up the
+    // font manager later in the engine launch process.  This makes it less
+    // likely that the setup will need to wait for the prefetch to complete.
+    auto root_isolate_create_callback = [&]() {
+      if (settings_.prefetched_default_font_manager) {
+        SetupDefaultFontManager();
       }
-    });
-  }
+    };
 
-  if (!runtime_controller_->LaunchRootIsolate(
-          settings_,                                 //
-          root_isolate_create_callback,              //
-          configuration.GetEntrypoint(),             //
-          configuration.GetEntrypointLibrary(),      //
-          configuration.GetEntrypointArgs(),         //
-          configuration.TakeIsolateConfiguration(),  //
-          native_assets_manager_,                    //
-          configuration.GetEngineId()))              //
-  {
-    return RunStatus::Failure;
-  }
+    if (settings_.merged_platform_ui_thread ==
+        Settings::MergedPlatformUIThread::kMergeAfterLaunch) {
+      // Queue a task to the UI task runner that sets the owner of the root
+      // isolate.  This task runs after the thread merge and will therefore be
+      // executed on the platform thread.  The task will run before any tasks
+      // queued by LaunchRootIsolate that execute the app's Dart code.
+      task_runners_.GetUITaskRunner()->PostTask([engine = GetWeakPtr()]() {
+        if (engine) {
+          engine->runtime_controller_->SetRootIsolateOwnerToCurrentThread();
+        }
+      });
+    }
 
-  auto service_id = runtime_controller_->GetRootIsolateServiceID();
-  if (service_id.has_value()) {
-    std::unique_ptr<PlatformMessage> service_id_message =
-        std::make_unique<flutter::PlatformMessage>(
-            kIsolateChannel, MakeMapping(service_id.value()), nullptr);
-    HandlePlatformMessage(std::move(service_id_message));
-  }
+    FML_DLOG(ERROR) << "runtime_controller_->LaunchRootIsolate";
 
-  if (settings_.merged_platform_ui_thread ==
-      Settings::MergedPlatformUIThread::kMergeAfterLaunch) {
-    // Move the UI task runner to the platform thread.
-    bool success = fml::MessageLoopTaskQueues::GetInstance()->Merge(
-        task_runners_.GetPlatformTaskRunner()->GetTaskQueueId(),
-        task_runners_.GetUITaskRunner()->GetTaskQueueId());
-    if (!success) {
-      FML_LOG(ERROR)
-          << "Unable to move the UI task runner to the platform thread";
+    if (!runtime_controller_->LaunchRootIsolate(
+            settings_,                                 //
+            root_isolate_create_callback,              //
+            configuration.GetEntrypoint(),             //
+            configuration.GetEntrypointLibrary(),      //
+            configuration.GetEntrypointArgs(),         //
+            configuration.TakeIsolateConfiguration(),  //
+            native_assets_manager_,                    //
+            configuration.GetEngineId()))              //
+    {
+      return RunStatus::Failure;
+    }
+
+    auto service_id = runtime_controller_->GetRootIsolateServiceID();
+    if (service_id.has_value()) {
+      std::unique_ptr<PlatformMessage> service_id_message =
+          std::make_unique<flutter::PlatformMessage>(
+              kIsolateChannel, MakeMapping(service_id.value()), nullptr);
+      HandlePlatformMessage(std::move(service_id_message));
+    }
+
+    if (settings_.merged_platform_ui_thread ==
+        Settings::MergedPlatformUIThread::kMergeAfterLaunch) {
+      // Move the UI task runner to the platform thread.
+      bool success = fml::MessageLoopTaskQueues::GetInstance()->Merge(
+          task_runners_.GetPlatformTaskRunner()->GetTaskQueueId(),
+          task_runners_.GetUITaskRunner()->GetTaskQueueId());
+      if (!success) {
+        FML_LOG(ERROR)
+            << "Unable to move the UI task runner to the platform thread";
+      }
+    }
+  } else {
+    FML_DLOG(ERROR) << "runtime_controller_->RunInSharedRootIsolate";
+       if (!runtime_controller_->RunInSharedRootIsolate(
+            settings_,                                 //
+            configuration.GetEntrypoint(),             //
+            configuration.GetEntrypointLibrary(),      //
+            configuration.GetEntrypointArgs(),         //
+            configuration.TakeIsolateConfiguration()  //
+            ) )             //
+    {
+      return RunStatus::Failure;
     }
   }
 
@@ -343,7 +377,7 @@ bool Engine::SendViewFocusEvent(const ViewFocusEvent& event) {
 
 void Engine::SetViewportMetrics(int64_t view_id,
                                 const ViewportMetrics& metrics) {
-  runtime_controller_->SetViewportMetrics(view_id, metrics);
+  runtime_controller_->SetViewportMetrics(engine_id_, metrics);
   ScheduleFrame();
 }
 
@@ -498,6 +532,7 @@ std::string Engine::DefaultRouteName() {
 }
 
 void Engine::ScheduleFrame(bool regenerate_layer_trees) {
+  FML_DLOG(ERROR) << "Engine::ScheduleFrame";
   animator_->RequestFrame(regenerate_layer_trees);
 }
 
@@ -508,12 +543,14 @@ void Engine::OnAllViewsRendered() {
 void Engine::Render(int64_t view_id,
                     std::unique_ptr<flutter::LayerTree> layer_tree,
                     float device_pixel_ratio) {
+  FML_DLOG(ERROR) << "Engine::Render view id: " << view_id << ", engine id: " << engine_id_;
   if (!layer_tree) {
     return;
   }
 
   // Ensure frame dimensions are sane.
   if (layer_tree->frame_size().IsEmpty() || device_pixel_ratio <= 0.0f) {
+    FML_DLOG(ERROR) << "Engine::Render frame_size empty view_id: " << view_id;
     return;
   }
 

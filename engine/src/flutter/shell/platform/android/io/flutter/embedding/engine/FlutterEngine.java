@@ -128,7 +128,7 @@ public class FlutterEngine implements ViewUtils.DisplayUpdater {
   }
 
   // Handle to assign to the next engine created.
-  private static long nextEngineId = 1;
+  private static long nextEngineId = 0;
 
   // Map of engine identifiers to engines.
   private static final Map<Long, FlutterEngine> idToEngine = new HashMap<>();

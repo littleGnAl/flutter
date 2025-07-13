@@ -44,6 +44,7 @@ static EGLBoolean EGLMakeCurrentIfNecessary(EGLDisplay display,
 
 bool Context::MakeCurrent(const Surface& surface) const {
   if (context_ == EGL_NO_CONTEXT) {
+    
     return false;
   }
   const auto result = EGLMakeCurrentIfNecessary(display_,             //

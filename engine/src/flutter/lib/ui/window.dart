@@ -375,6 +375,7 @@ class FlutterView {
   /// * [RendererBinding], the Flutter framework class which manages layout and
   ///   painting.
   void render(Scene scene, {Size? size}) {
+    print('FlutterView#viewId: $viewId');
     _render(
       viewId,
       scene as _NativeScene,

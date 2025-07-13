@@ -232,7 +232,7 @@ bool AndroidContextGLImpeller::ResourceContextMakeCurrent(
   if (!offscreen_context_ || !offscreen_surface) {
     return false;
   }
-
+FML_DLOG(ERROR) << "AndroidContextGLImpeller::ResourceContextMakeCurrent";
   return offscreen_context_->MakeCurrent(*offscreen_surface);
 }
 

@@ -61,9 +61,11 @@ bool AndroidSurfaceGLImpeller::OnScreenSurfaceResize(const SkISize& size) {
 
 // |AndroidSurface|
 bool AndroidSurfaceGLImpeller::ResourceContextMakeCurrent() {
+  FML_DLOG(ERROR) << "AndroidSurfaceGLImpeller::ResourceContextMakeCurrent";
   if (!offscreen_surface_) {
     return false;
   }
+  FML_DLOG(ERROR) << "AndroidSurfaceGLImpeller::ResourceContextMakeCurrent xxxx";
   return android_context_->ResourceContextMakeCurrent(offscreen_surface_.get());
 }
 

@@ -556,6 +556,7 @@ bool PlatformViewAndroid::IsSurfaceControlEnabled() const {
 }
 
 void PlatformViewAndroid::SetupImpellerContext() {
+  FML_DLOG(ERROR) << "PlatformViewAndroid::SetupImpellerContext";
   android_context_->SetupImpellerContext();
   android_surface_->SetupImpellerSurface();
 }

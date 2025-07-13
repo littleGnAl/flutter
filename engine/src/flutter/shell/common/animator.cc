@@ -188,6 +188,7 @@ void Animator::EndFrame() {
 void Animator::Render(int64_t view_id,
                       std::unique_ptr<flutter::LayerTree> layer_tree,
                       float device_pixel_ratio) {
+  FML_DLOG(ERROR) << "Animator::Render view id: " << view_id;
   has_rendered_ = true;
 
   if (!frame_timings_recorder_) {

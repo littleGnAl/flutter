@@ -47,10 +47,12 @@ std::unique_ptr<Surface> AndroidSurfaceDynamicImpeller::CreateGPUSurface(
 
 void AndroidSurfaceDynamicImpeller::SetupImpellerSurface() {
   AndroidRenderingAPI api = android_context_->RenderingApi();
+  FML_DLOG(ERROR) << "AndroidSurfaceDynamicImpeller::SetupImpellerSurface api: " << static_cast<int>(api);
   if (api == AndroidRenderingAPI::kImpellerVulkan) {
     vulkan_surface_ = std::make_unique<AndroidSurfaceVKImpeller>(
         android_context_->GetVKContext());
   } else if (api == AndroidRenderingAPI::kImpellerOpenGLES) {
+    FML_DLOG(ERROR) << "std::make_unique<AndroidSurfaceGLImpeller>";
     gl_surface_ = std::make_unique<AndroidSurfaceGLImpeller>(
         android_context_->GetGLContext());
   } else {
@@ -69,12 +71,14 @@ bool AndroidSurfaceDynamicImpeller::OnScreenSurfaceResize(const SkISize& size) {
 }
 
 bool AndroidSurfaceDynamicImpeller::ResourceContextMakeCurrent() {
+  FML_DLOG(ERROR) << "AndroidSurfaceDynamicImpeller::ResourceContextMakeCurrent";
   if (vulkan_surface_) {
     return vulkan_surface_->ResourceContextMakeCurrent();
   }
   if (gl_surface_) {
     return gl_surface_->ResourceContextMakeCurrent();
   }
+FML_DLOG(ERROR) << "AndroidSurfaceDynamicImpeller::ResourceContextMakeCurrent kkkkkk";
   return false;
 }
 

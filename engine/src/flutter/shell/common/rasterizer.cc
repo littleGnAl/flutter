@@ -703,6 +703,8 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
     std::optional<fml::TimePoint> presentation_time) {
   FML_DCHECK(surface_);
 
+  FML_DLOG(ERROR) << "Rasterizer::DrawToSurfaceUnsafe view id: " << view_id;
+
   DlCanvas* embedder_root_canvas = nullptr;
   if (external_view_embedder_) {
     external_view_embedder_->PrepareFlutterView(

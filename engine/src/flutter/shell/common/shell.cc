@@ -268,6 +268,7 @@ std::unique_ptr<Shell> Shell::CreateShellOnPlatformThread(
            runtime_stage_backend = std::move(runtime_stage_backend),        //
            platform_view_ptr]() mutable {
             TRACE_EVENT0("flutter", "CreateImpellerContext");
+            FML_DLOG(ERROR) << "platform_view_ptr->SetupImpellerContext()";
             platform_view_ptr->SetupImpellerContext();
             std::shared_ptr<impeller::Context> impeller_context =
                 platform_view_ptr->GetImpellerContext();
@@ -326,17 +327,20 @@ std::unique_ptr<Shell> Shell::CreateShellOnPlatformThread(
               impeller_context_future,      // impeller context
               impeller_enabled              //
           );
+
+                  // Wait until Impeller context setup is complete before creating the
+        // resource context.
+        io_manager->GetImpellerContext();
+        FML_DLOG(ERROR) << "platform_view_ptr->CreateResourceContext()";
+        sk_sp<GrDirectContext> resource_context =
+            platform_view_ptr->CreateResourceContext();
+        io_manager->NotifyResourceContextAvailable(resource_context);
         }
+
         weak_io_manager_promise.set_value(io_manager->GetWeakPtr());
         unref_queue_promise.set_value(io_manager->GetSkiaUnrefQueue());
         io_manager_promise.set_value(io_manager);
 
-        // Wait until Impeller context setup is complete before creating the
-        // resource context.
-        io_manager->GetImpellerContext();
-        sk_sp<GrDirectContext> resource_context =
-            platform_view_ptr->CreateResourceContext();
-        io_manager->NotifyResourceContextAvailable(resource_context);
       });
 
   // Send dispatcher_maker to the engine constructor because shell won't have
@@ -827,9 +831,16 @@ bool Shell::Setup(std::unique_ptr<PlatformView> platform_view,
   weak_platform_view_ = platform_view_->GetWeakPtr();
 
   // Add the implicit view with empty metrics.
-  engine_->AddView(kFlutterImplicitViewId, ViewportMetrics{}, [](bool added) {
-    FML_DCHECK(added) << "Failed to add the implicit view";
-  });
+  // engine_->AddView(kFlutterImplicitViewId, ViewportMetrics{}, [](bool added) {
+  //   FML_DCHECK(added) << "Failed to add the implicit view";
+  // });
+
+  //   static int64_t next_view_id = kFlutterImplicitViewId;
+  // FML_LOG(ERROR) << "next_view_id: " << next_view_id;
+  // // // Add the implicit view with empty metrics.
+  // engine_->AddView(next_view_id++, ViewportMetrics{}, [](bool added) {
+  //   FML_DCHECK(added) << "Failed to add the implicit view: " << next_view_id;
+  // });
 
   // Setup the time-consuming default font manager right after engine created.
   if (!settings_.prefetched_default_font_manager) {

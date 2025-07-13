@@ -330,6 +330,7 @@ static jobject LookupCallbackInformation(JNIEnv* env,
 static void SetViewportMetrics(JNIEnv* env,
                                jobject jcaller,
                                jlong shell_holder,
+                               jlong view_id,
                                jfloat devicePixelRatio,
                                jint physicalWidth,
                                jint physicalHeight,
@@ -390,8 +391,10 @@ static void SetViewportMetrics(JNIEnv* env,
       0,  // Display ID
   };
 
-  ANDROID_SHELL_HOLDER->GetPlatformView()->SetViewportMetrics(
-      kFlutterImplicitViewId, metrics);
+  // ANDROID_SHELL_HOLDER->GetPlatformView()->SetViewportMetrics(
+  //     kFlutterImplicitViewId, metrics);
+    ANDROID_SHELL_HOLDER->GetPlatformView()->SetViewportMetrics(
+      view_id, metrics);
 }
 
 static void UpdateDisplayMetrics(JNIEnv* env,
@@ -785,7 +788,7 @@ bool RegisterApi(JNIEnv* env) {
       },
       {
           .name = "nativeSetViewportMetrics",
-          .signature = "(JFIIIIIIIIIIIIIII[I[I[I)V",
+          .signature = "(JJFIIIIIIIIIIIIIII[I[I[I)V",
           .fnPtr = reinterpret_cast<void*>(&SetViewportMetrics),
       },
       {

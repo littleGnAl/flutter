@@ -513,6 +513,7 @@ void PlatformConfigurationNativeApi::Render(int64_t view_id,
                                             Scene* scene,
                                             double width,
                                             double height) {
+  FML_DLOG(ERROR) << "PlatformConfigurationNativeApi::Render view_id: " << view_id;
   UIDartState::ThrowIfUIOperationsProhibited();
   UIDartState::Current()->platform_configuration()->client()->Render(
       view_id, scene, width, height);
@@ -653,6 +654,7 @@ Dart_Handle PlatformConfigurationNativeApi::GetPersistentIsolateData() {
 }
 
 void PlatformConfigurationNativeApi::ScheduleFrame() {
+  FML_DLOG(ERROR) << "PlatformConfigurationNativeApi::ScheduleFrame";
   UIDartState::ThrowIfUIOperationsProhibited();
   UIDartState::Current()->platform_configuration()->client()->ScheduleFrame();
 }

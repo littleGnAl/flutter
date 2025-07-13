@@ -852,7 +852,10 @@ class PlatformDispatcher {
   ///    scheduling of frames.
   ///  * [scheduleWarmUpFrame], which should only be used to schedule warm up
   ///    frames.
-  void scheduleFrame() => _scheduleFrame();
+  void scheduleFrame() {
+    print('PlatformDispatcher.scheduleFrame');
+    _scheduleFrame();
+  }
 
   @Native<Void Function()>(symbol: 'PlatformConfigurationNativeApi::ScheduleFrame')
   external static void _scheduleFrame();

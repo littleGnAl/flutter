@@ -1080,6 +1080,7 @@ class Engine final : public RuntimeDelegate, PointerDataDispatcher::Delegate {
   TaskRunners task_runners_;
   fml::TaskRunnerAffineWeakPtrFactory<Engine>
       weak_factory_;  // Must be the last member.
+    int64_t engine_id_;
   FML_DISALLOW_COPY_AND_ASSIGN(Engine);
 };
 

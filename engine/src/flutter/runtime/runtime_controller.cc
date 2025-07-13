@@ -86,6 +86,7 @@ std::unique_ptr<RuntimeController> RuntimeController::Spawn(
                                           p_persistent_isolate_data,     //
                                           spawned_context);              //
   result->spawning_isolate_ = root_isolate_;
+  result->root_isolate_ = root_isolate_;
   return result;
 }
 
@@ -402,6 +403,7 @@ std::string RuntimeController::DefaultRouteName() {
 
 // |PlatformConfigurationClient|
 void RuntimeController::ScheduleFrame() {
+  FML_DLOG(ERROR) << "RuntimeController::ScheduleFrame";
   client_.ScheduleFrame();
 }
 
@@ -417,8 +419,10 @@ void RuntimeController::Render(int64_t view_id,
   const ViewportMetrics* view_metrics =
       UIDartState::Current()->platform_configuration()->GetMetrics(view_id);
   if (view_metrics == nullptr) {
+    FML_DLOG(ERROR) << "RuntimeController::Render view_metrics == nullptr view_id: " << view_id;
     return;
   }
+  FML_DLOG(ERROR) << "RuntimeController::Render view_id: " << view_id;
   client_.Render(view_id, scene->takeLayerTree(width, height),
                  view_metrics->device_pixel_ratio);
   rendered_views_during_frame_.insert(view_id);
@@ -591,6 +595,44 @@ bool RuntimeController::LaunchRootIsolate(
   }
 
   FML_DCHECK(Dart_CurrentIsolate() == nullptr);
+
+  client_.OnRootIsolateCreated();
+
+  return true;
+}
+
+bool RuntimeController::RunInSharedRootIsolate(
+    const Settings& settings,
+    std::optional<std::string> dart_entrypoint,
+    std::optional<std::string> dart_entrypoint_library,
+    const std::vector<std::string>& dart_entrypoint_args,
+    std::unique_ptr<IsolateConfiguration> isolate_configuration) {
+          FML_DLOG(ERROR) << "RuntimeController::RunInSharedRootIsolate";
+  // auto platform_configuration =
+  //     std::make_unique<PlatformConfiguration>(this, application_id_);
+  auto strong_root_isolate = spawning_isolate_.lock();
+  // bool result = strong_root_isolate->InvokeEntryPointInSharedIsolate(
+  //     std::make_unique<PlatformConfiguration>(this, application_id_),
+  //     dart_entrypoint_library, dart_entrypoint, dart_entrypoint_args);
+  // if (!result) {
+  //   FML_LOG(ERROR) << "Could not run in shared root isolate.";
+  //   return false;
+  // }
+
+  // The root isolate ivar is weak.
+  root_isolate_ = strong_root_isolate;
+
+  // if (auto* platform_configuration = GetPlatformConfigurationIfAvailable()) {
+  //   tonic::DartState::Scope scope(strong_root_isolate);
+  //   platform_configuration->DidCreateIsolate();
+  //   if (!FlushRuntimeStateToIsolate()) {
+  //     FML_DLOG(ERROR) << "Could not set up initial isolate state.";
+  //   }
+  // } else {
+  //   FML_DCHECK(false) << "RuntimeController created without window binding.";
+  // }
+
+  // FML_DCHECK(Dart_CurrentIsolate() == nullptr);
 
   client_.OnRootIsolateCreated();
 

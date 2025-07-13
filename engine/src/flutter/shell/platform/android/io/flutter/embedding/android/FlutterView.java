@@ -199,6 +199,8 @@ public class FlutterView extends FrameLayout
 
   private Consumer<WindowLayoutInfo> windowInfoListener;
 
+  private long viewId = 0;
+
   /**
    * Constructs a {@code FlutterView} programmatically, without any XML attributes.
    *
@@ -1106,6 +1108,7 @@ public class FlutterView extends FrameLayout
     }
 
     this.flutterEngine = flutterEngine;
+    this.viewId = flutterEngine.getEngineId();
 
     // Instruct our FlutterRenderer that we are now its designated RenderSurface.
     FlutterRenderer flutterRenderer = this.flutterEngine.getRenderer();
@@ -1501,7 +1504,7 @@ public class FlutterView extends FrameLayout
     viewportMetrics.devicePixelRatio = getResources().getDisplayMetrics().density;
     viewportMetrics.physicalTouchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
 
-    flutterEngine.getRenderer().setViewportMetrics(viewportMetrics);
+    flutterEngine.getRenderer().setViewportMetrics(viewId, viewportMetrics);
   }
 
   @Override

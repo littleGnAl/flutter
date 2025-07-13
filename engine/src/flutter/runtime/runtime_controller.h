@@ -173,6 +173,13 @@ class RuntimeController : public PlatformConfigurationClient,
       std::shared_ptr<NativeAssetsManager> native_assets_manager,
       std::optional<int64_t> engine_id);
 
+  [[nodiscard]] bool RunInSharedRootIsolate(
+      const Settings& settings,
+      std::optional<std::string> dart_entrypoint,
+      std::optional<std::string> dart_entrypoint_library,
+      const std::vector<std::string>& dart_entrypoint_args,
+      std::unique_ptr<IsolateConfiguration> isolate_configuration);
+
   //----------------------------------------------------------------------------
   /// @brief      Clone the runtime controller. Launching an isolate with a
   ///             cloned runtime controller will use the same snapshots and
