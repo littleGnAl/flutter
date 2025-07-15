@@ -4,6 +4,7 @@
 
 #include "flutter/runtime/runtime_controller.h"
 
+#include <unordered_set>
 #include <utility>
 
 #include "flutter/common/settings.h"
@@ -87,11 +88,13 @@ std::unique_ptr<RuntimeController> RuntimeController::Spawn(
                                           spawned_context);              //
   result->spawning_isolate_ = root_isolate_;
   result->root_isolate_ = root_isolate_;
+  result->lightweightEngineMultiViewClient_ = lightweightEngineMultiViewClient_;
   return result;
 }
 
 RuntimeController::~RuntimeController() {
   FML_DCHECK(Dart_CurrentIsolate() == nullptr);
+  lightweightEngineMultiViewClient_->RemoveChildClient(this);
   std::shared_ptr<DartIsolate> root_isolate = root_isolate_.lock();
   if (root_isolate) {
     root_isolate->SetReturnCodeCallback(nullptr);
@@ -542,11 +545,15 @@ bool RuntimeController::LaunchRootIsolate(
     return false;
   }
 
+  lightweightEngineMultiViewClient_ = std::make_shared<LightweightEngineMultiViewClient>();
+  lightweightEngineMultiViewClient_->AddChildClient(this);
+
   auto strong_root_isolate =
       DartIsolate::CreateRunningRootIsolate(
           settings,                                       //
           isolate_snapshot_,                              //
-          std::make_unique<PlatformConfiguration>(this),  //
+          // std::make_unique<PlatformConfiguration>(this),  //
+          std::make_unique<PlatformConfiguration>(lightweightEngineMultiViewClient_.get()),  //
           DartIsolate::Flags{},                           //
           root_isolate_create_callback,                   //
           isolate_create_callback_,                       //
@@ -621,6 +628,8 @@ bool RuntimeController::RunInSharedRootIsolate(
 
   // The root isolate ivar is weak.
   root_isolate_ = strong_root_isolate;
+
+  lightweightEngineMultiViewClient_->AddChildClient(this);
 
   // if (auto* platform_configuration = GetPlatformConfigurationIfAvailable()) {
   //   tonic::DartState::Scope scope(strong_root_isolate);
@@ -725,5 +734,142 @@ RuntimeController::Locale::Locale(std::string language_code_,
       variant_code(std::move(variant_code_)) {}
 
 RuntimeController::Locale::~Locale() = default;
+
+  LightweightEngineMultiViewClient::~LightweightEngineMultiViewClient() = default;
+
+  void LightweightEngineMultiViewClient::AddChildClient(PlatformConfigurationClient* client) {
+    child_clients_.emplace(client);
+  }
+
+  void LightweightEngineMultiViewClient::RemoveChildClient(PlatformConfigurationClient* client) {
+    child_clients_.erase(client);
+  }
+
+  // |PlatformConfigurationClient|
+  std::string LightweightEngineMultiViewClient::DefaultRouteName() {
+    if (!child_clients_.empty()) {
+      return (*child_clients_.begin())->DefaultRouteName();
+    }
+    return "";
+  }
+
+  // |PlatformConfigurationClient|
+  void LightweightEngineMultiViewClient::ScheduleFrame() {
+    for (auto * client : child_clients_) {
+      client->ScheduleFrame();
+    }
+  }
+
+  // |PlatformConfigurationClient|
+  void LightweightEngineMultiViewClient::EndWarmUpFrame() {
+    for (auto* client : child_clients_) {
+      client->EndWarmUpFrame();
+    }
+  }
+
+  // |PlatformConfigurationClient|
+  void LightweightEngineMultiViewClient::Render(int64_t view_id,
+                                                Scene* scene,
+                                                double width,
+                                                double height) {
+          for (auto* client : child_clients_) {
+client->Render(view_id, scene, width, height);
+      }
+  }
+
+  // |PlatformConfigurationClient|
+  void LightweightEngineMultiViewClient::UpdateSemantics(int64_t view_id, SemanticsUpdate* update) {
+    for (auto* client : child_clients_) {
+      client->UpdateSemantics(view_id, update);
+    }
+  }
+
+  // |PlatformConfigurationClient|
+  void LightweightEngineMultiViewClient::HandlePlatformMessage(std::unique_ptr<PlatformMessage> message) {
+    if (!child_clients_.empty()) {
+      auto* client = *child_clients_.begin();
+      client->HandlePlatformMessage(std::move(message));
+    }
+  }
+
+  // |PlatformConfigurationClient|
+  FontCollection& LightweightEngineMultiViewClient::GetFontCollection() {
+    return (*child_clients_.begin())->GetFontCollection();
+  }
+
+  // |PlatformConfigurationClient|
+  std::shared_ptr<AssetManager> LightweightEngineMultiViewClient::GetAssetManager() {
+    return (*child_clients_.begin())->GetAssetManager();
+  }
+
+  // |PlatformConfigurationClient|
+  void LightweightEngineMultiViewClient::UpdateIsolateDescription(const std::string isolate_name,
+                                                                   int64_t isolate_port) {
+    for (auto* client : child_clients_) {
+      client->UpdateIsolateDescription(isolate_name, isolate_port);
+    }
+  }
+
+  // |PlatformConfigurationClient|
+  void LightweightEngineMultiViewClient::SetNeedsReportTimings(bool value) {
+    for (auto* client : child_clients_) {
+      client->SetNeedsReportTimings(value);
+    }
+  }
+
+  // |PlatformConfigurationClient|
+  std::unique_ptr<std::vector<std::string>> LightweightEngineMultiViewClient::ComputePlatformResolvedLocale(
+      const std::vector<std::string>& supported_locale_data) {
+    if (!child_clients_.empty()) {
+      return (*child_clients_.begin())->ComputePlatformResolvedLocale(supported_locale_data);
+    }
+    return std::make_unique<std::vector<std::string>>();
+  }
+
+  // |PlatformConfigurationClient|
+  void LightweightEngineMultiViewClient::SendChannelUpdate(std::string name, bool listening) {
+    for (auto* client : child_clients_) {
+      client->SendChannelUpdate(name, listening);
+    }
+  }
+
+  // |PlatformConfigurationClient|
+  double LightweightEngineMultiViewClient::GetScaledFontSize(double unscaled_font_size,
+                                                             int configuration_id) const {
+    if (!child_clients_.empty()) {
+      return (*child_clients_.begin())->GetScaledFontSize(unscaled_font_size, configuration_id);
+    }
+    return unscaled_font_size;
+  }
+
+  // |PlatformConfigurationClient|
+  void LightweightEngineMultiViewClient::RequestViewFocusChange(const ViewFocusChangeRequest& request) {
+    for (auto* client : child_clients_) {
+      client->RequestViewFocusChange(request);
+    }
+  }
+
+      // |PlatformConfigurationClient|
+  std::shared_ptr<const fml::Mapping> LightweightEngineMultiViewClient::GetPersistentIsolateData() {
+    if (!child_clients_.empty()) {
+      return (*child_clients_.begin())->GetPersistentIsolateData();
+    }
+    return nullptr;
+  }
+
+  // |PlatformConfigurationClient|
+  void LightweightEngineMultiViewClient::RequestDartDeferredLibrary(intptr_t loading_unit_id) {
+    for (auto* client : child_clients_) {
+      client->RequestDartDeferredLibrary(loading_unit_id);
+    }
+  }
+
+  // |PlatformConfigurationClient|
+  std::shared_ptr<PlatformIsolateManager> LightweightEngineMultiViewClient::GetPlatformIsolateManager() {
+    if (!child_clients_.empty()) {
+      return (*child_clients_.begin())->GetPlatformIsolateManager();
+    }
+    return nullptr;
+  }
 
 }  // namespace flutter

@@ -1276,6 +1276,102 @@ public class FlutterRenderer implements TextureRegistry {
         displayFeaturesState);
   }
 
+  public void addView(long viewId, @NonNull ViewportMetrics viewportMetrics) {
+    // We might get called with just the DPR if width/height aren't available yet.
+    // Just ignore, as it will get called again when width/height are set.
+    // if (!viewportMetrics.validate()) {
+    //   return;
+    // }
+    Log.v(
+            TAG,
+            "Adding viewport metrics\n"
+                    + "Size: "
+                    + viewportMetrics.width
+                    + " x "
+                    + viewportMetrics.height
+                    + "\n"
+                    + "Padding - L: "
+                    + viewportMetrics.viewPaddingLeft
+                    + ", T: "
+                    + viewportMetrics.viewPaddingTop
+                    + ", R: "
+                    + viewportMetrics.viewPaddingRight
+                    + ", B: "
+                    + viewportMetrics.viewPaddingBottom
+                    + "\n"
+                    + "Insets - L: "
+                    + viewportMetrics.viewInsetLeft
+                    + ", T: "
+                    + viewportMetrics.viewInsetTop
+                    + ", R: "
+                    + viewportMetrics.viewInsetRight
+                    + ", B: "
+                    + viewportMetrics.viewInsetBottom
+                    + "\n"
+                    + "System Gesture Insets - L: "
+                    + viewportMetrics.systemGestureInsetLeft
+                    + ", T: "
+                    + viewportMetrics.systemGestureInsetTop
+                    + ", R: "
+                    + viewportMetrics.systemGestureInsetRight
+                    + ", B: "
+                    + viewportMetrics.systemGestureInsetRight
+                    + "\n"
+                    + "Display Features: "
+                    + viewportMetrics.displayFeatures.size()
+                    + "\n"
+                    + "Display Cutouts: "
+                    + viewportMetrics.displayCutouts.size());
+
+    int totalFeaturesAndCutouts =
+            viewportMetrics.displayFeatures.size() + viewportMetrics.displayCutouts.size();
+    int[] displayFeaturesBounds = new int[totalFeaturesAndCutouts * 4];
+    int[] displayFeaturesType = new int[totalFeaturesAndCutouts];
+    int[] displayFeaturesState = new int[totalFeaturesAndCutouts];
+    for (int i = 0; i < viewportMetrics.displayFeatures.size(); i++) {
+      DisplayFeature displayFeature = viewportMetrics.displayFeatures.get(i);
+      translateFeatureBounds(displayFeaturesBounds, 4 * i, displayFeature.bounds);
+      displayFeaturesType[i] = displayFeature.type.encodedValue;
+      displayFeaturesState[i] = displayFeature.state.encodedValue;
+    }
+    int cutoutOffset = viewportMetrics.displayFeatures.size() * 4;
+    for (int i = 0; i < viewportMetrics.displayCutouts.size(); i++) {
+      DisplayFeature displayCutout = viewportMetrics.displayCutouts.get(i);
+      translateFeatureBounds(displayFeaturesBounds, cutoutOffset + 4 * i, displayCutout.bounds);
+      displayFeaturesType[viewportMetrics.displayFeatures.size() + i] =
+              displayCutout.type.encodedValue;
+      displayFeaturesState[viewportMetrics.displayFeatures.size() + i] =
+              displayCutout.state.encodedValue;
+    }
+
+    flutterJNI.addView(
+            viewId,
+            viewportMetrics.devicePixelRatio,
+            viewportMetrics.width,
+            viewportMetrics.height,
+            viewportMetrics.viewPaddingTop,
+            viewportMetrics.viewPaddingRight,
+            viewportMetrics.viewPaddingBottom,
+            viewportMetrics.viewPaddingLeft,
+            viewportMetrics.viewInsetTop,
+            viewportMetrics.viewInsetRight,
+            viewportMetrics.viewInsetBottom,
+            viewportMetrics.viewInsetLeft,
+            viewportMetrics.systemGestureInsetTop,
+            viewportMetrics.systemGestureInsetRight,
+            viewportMetrics.systemGestureInsetBottom,
+            viewportMetrics.systemGestureInsetLeft,
+            viewportMetrics.physicalTouchSlop,
+            displayFeaturesBounds,
+            displayFeaturesType,
+            displayFeaturesState);
+  }
+
+  public void removeView(long viewId) {
+    flutterJNI.removeView(
+            viewId);
+  }
+
   public Bitmap getBitmap() {
     return flutterJNI.getBitmap();
   }

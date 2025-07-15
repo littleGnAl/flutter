@@ -149,7 +149,9 @@ std::unique_ptr<Engine> Engine::Spawn(
   return result;
 }
 
-Engine::~Engine() = default;
+Engine::~Engine() {
+  RemoveView(engine_id_);
+}
 
 fml::TaskRunnerAffineWeakPtr<Engine> Engine::GetWeakPtr() const {
   return weak_factory_.GetWeakPtr();
@@ -225,9 +227,9 @@ Engine::RunStatus Engine::Run(RunConfiguration configuration) {
       static int64_t next_view_id = kFlutterImplicitViewId;
   FML_LOG(ERROR) << "next_view_id: " << next_view_id;
   // // Add the implicit view with empty metrics.
-  AddView(next_view_id++, ViewportMetrics{}, [](bool added) {
-    FML_DCHECK(added) << "Failed to add the implicit view: " << next_view_id;
-  });
+  // AddView(next_view_id++, ViewportMetrics{}, [](bool added) {
+  //   FML_DCHECK(added) << "Failed to add the implicit view: " << next_view_id;
+  // });
 
   last_entry_point_ = configuration.GetEntrypoint();
   last_entry_point_library_ = configuration.GetEntrypointLibrary();
@@ -543,6 +545,10 @@ void Engine::OnAllViewsRendered() {
 void Engine::Render(int64_t view_id,
                     std::unique_ptr<flutter::LayerTree> layer_tree,
                     float device_pixel_ratio) {
+if (engine_id_ != view_id) {
+  return;
+}
+
   FML_DLOG(ERROR) << "Engine::Render view id: " << view_id << ", engine id: " << engine_id_;
   if (!layer_tree) {
     return;

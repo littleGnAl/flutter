@@ -1112,9 +1112,12 @@ public class FlutterView extends FrameLayout
 
     // Instruct our FlutterRenderer that we are now its designated RenderSurface.
     FlutterRenderer flutterRenderer = this.flutterEngine.getRenderer();
+    flutterRenderer.addView(viewId, viewportMetrics);
     isFlutterUiDisplayed = flutterRenderer.isDisplayingFlutterUi();
     renderSurface.attachToRenderer(flutterRenderer);
     flutterRenderer.addIsDisplayingFlutterUiListener(flutterUiDisplayListener);
+
+
 
     // Initialize various components that know how to process Android View I/O
     // in a way that Flutter understands.
@@ -1147,6 +1150,7 @@ public class FlutterView extends FrameLayout
     keyboardManager = new KeyboardManager(this);
     androidTouchProcessor =
         new AndroidTouchProcessor(this.flutterEngine.getRenderer(), /*trackMotionEvents=*/ false);
+    androidTouchProcessor.setFlutterViewId(viewId);
 
     accessibilityBridge =
         new AccessibilityBridge(
@@ -1270,6 +1274,8 @@ public class FlutterView extends FrameLayout
       renderSurface = previousRenderSurface;
     }
     renderSurface.detachFromRenderer();
+
+    flutterRenderer.removeView(viewId);
 
     releaseImageView();
 
@@ -1536,6 +1542,10 @@ public class FlutterView extends FrameLayout
   @VisibleForTesting
   public FlutterRenderer.ViewportMetrics getViewportMetrics() {
     return viewportMetrics;
+  }
+
+  public long getViewId() {
+    return viewId;
   }
 
   /**

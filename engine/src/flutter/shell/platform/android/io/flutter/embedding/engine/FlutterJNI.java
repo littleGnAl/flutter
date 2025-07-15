@@ -742,6 +742,93 @@ public class FlutterJNI {
       int[] displayFeaturesType,
       int[] displayFeaturesState);
 
+  @UiThread
+  public void addView(
+          long viewId,
+          float devicePixelRatio,
+          int physicalWidth,
+          int physicalHeight,
+          int physicalPaddingTop,
+          int physicalPaddingRight,
+          int physicalPaddingBottom,
+          int physicalPaddingLeft,
+          int physicalViewInsetTop,
+          int physicalViewInsetRight,
+          int physicalViewInsetBottom,
+          int physicalViewInsetLeft,
+          int systemGestureInsetTop,
+          int systemGestureInsetRight,
+          int systemGestureInsetBottom,
+          int systemGestureInsetLeft,
+          int physicalTouchSlop,
+          int[] displayFeaturesBounds,
+          int[] displayFeaturesType,
+          int[] displayFeaturesState) {
+    ensureRunningOnMainThread();
+    ensureAttachedToNative();
+    nativeAddView(
+            nativeShellHolderId,
+            viewId,
+            devicePixelRatio,
+            physicalWidth,
+            physicalHeight,
+            physicalPaddingTop,
+            physicalPaddingRight,
+            physicalPaddingBottom,
+            physicalPaddingLeft,
+            physicalViewInsetTop,
+            physicalViewInsetRight,
+            physicalViewInsetBottom,
+            physicalViewInsetLeft,
+            systemGestureInsetTop,
+            systemGestureInsetRight,
+            systemGestureInsetBottom,
+            systemGestureInsetLeft,
+            physicalTouchSlop,
+            displayFeaturesBounds,
+            displayFeaturesType,
+            displayFeaturesState);
+  }
+
+  private native void nativeAddView(
+          long nativeShellHolderId,
+          long viewId,
+          float devicePixelRatio,
+          int physicalWidth,
+          int physicalHeight,
+          int physicalPaddingTop,
+          int physicalPaddingRight,
+          int physicalPaddingBottom,
+          int physicalPaddingLeft,
+          int physicalViewInsetTop,
+          int physicalViewInsetRight,
+          int physicalViewInsetBottom,
+          int physicalViewInsetLeft,
+          int systemGestureInsetTop,
+          int systemGestureInsetRight,
+          int systemGestureInsetBottom,
+          int systemGestureInsetLeft,
+          int physicalTouchSlop,
+          int[] displayFeaturesBounds,
+          int[] displayFeaturesType,
+          int[] displayFeaturesState);
+
+  @UiThread
+  public void removeView(
+          long viewId) {
+    ensureRunningOnMainThread();
+    ensureAttachedToNative();
+    nativeRemoveView(
+            nativeShellHolderId,
+            viewId);
+  }
+
+  private native void nativeRemoveView(
+          long nativeShellHolderId,
+          long viewId);
+
+
+
   // ----- End Render Surface Support -----
 
   // ------ Start Touch Interaction Support ---

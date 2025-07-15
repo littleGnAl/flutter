@@ -8,6 +8,7 @@
     "files.trimTrailingWhitespace": true,
     "files.associations": {
         "optional": "cpp",
-        "future": "cpp"
+        "future": "cpp",
+        "unordered_set": "cpp"
     }
 }

@@ -397,6 +397,120 @@ static void SetViewportMetrics(JNIEnv* env,
       view_id, metrics);
 }
 
+
+static void AddView(JNIEnv* env,
+                               jobject jcaller,
+                               jlong shell_holder,
+                               jlong view_id,
+                               jfloat devicePixelRatio,
+                               jint physicalWidth,
+                               jint physicalHeight,
+                               jint physicalPaddingTop,
+                               jint physicalPaddingRight,
+                               jint physicalPaddingBottom,
+                               jint physicalPaddingLeft,
+                               jint physicalViewInsetTop,
+                               jint physicalViewInsetRight,
+                               jint physicalViewInsetBottom,
+                               jint physicalViewInsetLeft,
+                               jint systemGestureInsetTop,
+                               jint systemGestureInsetRight,
+                               jint systemGestureInsetBottom,
+                               jint systemGestureInsetLeft,
+                               jint physicalTouchSlop,
+                               jintArray javaDisplayFeaturesBounds,
+                               jintArray javaDisplayFeaturesType,
+                               jintArray javaDisplayFeaturesState) {
+  // if (view_id == kFlutterImplicitViewId) {
+  //   return;
+  // }
+  // Convert java->c++. javaDisplayFeaturesBounds, javaDisplayFeaturesType and
+  // javaDisplayFeaturesState cannot be null
+  jsize rectSize = env->GetArrayLength(javaDisplayFeaturesBounds);
+  std::vector<int> boundsIntVector(rectSize);
+  env->GetIntArrayRegion(javaDisplayFeaturesBounds, 0, rectSize,
+                         &boundsIntVector[0]);
+  std::vector<double> displayFeaturesBounds(boundsIntVector.begin(),
+                                            boundsIntVector.end());
+  jsize typeSize = env->GetArrayLength(javaDisplayFeaturesType);
+  std::vector<int> displayFeaturesType(typeSize);
+  env->GetIntArrayRegion(javaDisplayFeaturesType, 0, typeSize,
+                         &displayFeaturesType[0]);
+  jsize stateSize = env->GetArrayLength(javaDisplayFeaturesState);
+  std::vector<int> displayFeaturesState(stateSize);
+  env->GetIntArrayRegion(javaDisplayFeaturesState, 0, stateSize,
+                         &displayFeaturesState[0]);
+  const flutter::ViewportMetrics metrics{
+      static_cast<double>(devicePixelRatio),
+      static_cast<double>(physicalWidth),
+      static_cast<double>(physicalHeight),
+      static_cast<double>(physicalPaddingTop),
+      static_cast<double>(physicalPaddingRight),
+      static_cast<double>(physicalPaddingBottom),
+      static_cast<double>(physicalPaddingLeft),
+      static_cast<double>(physicalViewInsetTop),
+      static_cast<double>(physicalViewInsetRight),
+      static_cast<double>(physicalViewInsetBottom),
+      static_cast<double>(physicalViewInsetLeft),
+      static_cast<double>(systemGestureInsetTop),
+      static_cast<double>(systemGestureInsetRight),
+      static_cast<double>(systemGestureInsetBottom),
+      static_cast<double>(systemGestureInsetLeft),
+      static_cast<double>(physicalTouchSlop),
+      displayFeaturesBounds,
+      displayFeaturesType,
+      displayFeaturesState,
+      0,  // Display ID
+  };
+
+  // ANDROID_SHELL_HOLDER->GetPlatformView()->SetViewportMetrics(
+  //     kFlutterImplicitViewId, metrics);
+
+    bool added = false;
+    // FlutterAddViewInfo info{.struct_size = sizeof(FlutterAddViewInfo),
+    //                         .view_id = viewIdentifier,
+    //                         .view_metrics = &metrics,
+    //                         .user_data = &added,
+    //                         .add_view_callback = [](const FlutterAddViewResult* r) {
+    //                           auto added = reinterpret_cast<bool*>(r->user_data);
+    //                           *added = true;
+    //                         }};
+
+    ANDROID_SHELL_HOLDER->GetPlatformView()->AddView(
+            view_id, metrics, [&added](bool result) {
+                              added = true;
+                            });
+
+      FML_DCHECK(added);
+    if (!added) {
+      // NSLog(@"Failed to add view with ID %llu", viewIdentifier);
+      FML_LOG(ERROR) << "Failed to add view with ID" << view_id;
+    }
+
+
+}
+
+static void RemoveView(JNIEnv* env,
+                               jobject jcaller,
+                               jlong shell_holder,
+                               jlong view_id) {
+
+    bool removed = false;
+
+    ANDROID_SHELL_HOLDER->GetPlatformView()->RemoveView(
+            view_id, [&removed](bool result) {
+                              removed = true;
+                            });
+
+      FML_DCHECK(removed);
+    if (!removed) {
+      // NSLog(@"Failed to add view with ID %llu", viewIdentifier);
+      FML_LOG(ERROR) << "Failed to remove view with ID" << view_id;
+    }
+
+
+}
+
 static void UpdateDisplayMetrics(JNIEnv* env,
                                  jobject jcaller,
                                  jlong shell_holder) {
@@ -790,6 +904,16 @@ bool RegisterApi(JNIEnv* env) {
           .name = "nativeSetViewportMetrics",
           .signature = "(JJFIIIIIIIIIIIIIII[I[I[I)V",
           .fnPtr = reinterpret_cast<void*>(&SetViewportMetrics),
+      },
+       {
+              .name = "nativeAddView",
+              .signature = "(JJFIIIIIIIIIIIIIII[I[I[I)V",
+              .fnPtr = reinterpret_cast<void*>(&AddView),
+      },
+             {
+              .name = "nativeRemoveView",
+              .signature = "(JJ)V",
+              .fnPtr = reinterpret_cast<void*>(&RemoveView),
       },
       {
           .name = "nativeDispatchPointerDataPacket",

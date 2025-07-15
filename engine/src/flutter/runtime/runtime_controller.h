@@ -6,6 +6,7 @@
 #define FLUTTER_RUNTIME_RUNTIME_CONTROLLER_H_
 
 #include <memory>
+#include <unordered_set>
 #include <vector>
 
 #include "assets/native_assets.h"
@@ -31,6 +32,7 @@ class Scene;
 class RuntimeDelegate;
 class View;
 class Window;
+class LightweightEngineMultiViewClient;
 
 //------------------------------------------------------------------------------
 /// Represents an instance of a running root isolate with window bindings. In
@@ -741,6 +743,8 @@ class RuntimeController : public PlatformConfigurationClient,
   // TODO(dkwingsmt): Fix these problems for all cases.
   std::unordered_set<uint64_t> rendered_views_during_frame_;
 
+  std::shared_ptr<LightweightEngineMultiViewClient> lightweightEngineMultiViewClient_;
+
   void MarkAsFrameBorder();
 
   void CheckIfAllViewsRendered();
@@ -801,6 +805,80 @@ class RuntimeController : public PlatformConfigurationClient,
   void RequestViewFocusChange(const ViewFocusChangeRequest& request) override;
 
   FML_DISALLOW_COPY_AND_ASSIGN(RuntimeController);
+};
+
+class LightweightEngineMultiViewClient : public PlatformConfigurationClient {
+public:
+  LightweightEngineMultiViewClient() = default;
+  // |PlatformConfigurationClient|
+  ~LightweightEngineMultiViewClient() override;
+
+    void AddChildClient(PlatformConfigurationClient* client);
+
+  void RemoveChildClient(PlatformConfigurationClient* client);
+
+private:
+
+  // |PlatformConfigurationClient|
+  std::string DefaultRouteName() override;
+
+  // |PlatformConfigurationClient|
+  void ScheduleFrame() override;
+
+  // |PlatformConfigurationClient|
+  void EndWarmUpFrame() override;
+
+  // |PlatformConfigurationClient|
+  void Render(int64_t view_id,
+              Scene* scene,
+              double width,
+              double height) override;
+
+  // |PlatformConfigurationClient|
+  void UpdateSemantics(int64_t view_id, SemanticsUpdate* update) override;
+
+  // |PlatformConfigurationClient|
+  void HandlePlatformMessage(std::unique_ptr<PlatformMessage> message) override;
+
+  // |PlatformConfigurationClient|
+  FontCollection& GetFontCollection() override;
+
+  // |PlatformConfigurationClient|
+  std::shared_ptr<AssetManager> GetAssetManager() override;
+
+  // |PlatformConfigurationClient|
+  void UpdateIsolateDescription(const std::string isolate_name,
+                                int64_t isolate_port) override;
+
+  // |PlatformConfigurationClient|
+  void SetNeedsReportTimings(bool value) override;
+
+  // |PlatformConfigurationClient|
+  std::unique_ptr<std::vector<std::string>> ComputePlatformResolvedLocale(
+      const std::vector<std::string>& supported_locale_data) override;
+
+  // |PlatformConfigurationClient|
+  void SendChannelUpdate(std::string name, bool listening) override;
+
+  // |PlatformConfigurationClient|
+  double GetScaledFontSize(double unscaled_font_size,
+                           int configuration_id) const override;
+
+  // |PlatformConfigurationClient|
+  void RequestViewFocusChange(const ViewFocusChangeRequest& request) override;
+
+    // |PlatformConfigurationClient|
+  std::shared_ptr<const fml::Mapping> GetPersistentIsolateData() override;
+
+  // |PlatformConfigurationClient|
+  void RequestDartDeferredLibrary(intptr_t loading_unit_id) override;
+
+  // |PlatformConfigurationClient|
+  std::shared_ptr<PlatformIsolateManager> GetPlatformIsolateManager() override;
+
+  std::unordered_set<PlatformConfigurationClient*> child_clients_;
+
+  FML_DISALLOW_COPY_AND_ASSIGN(LightweightEngineMultiViewClient);
 };
 
 }  // namespace flutter

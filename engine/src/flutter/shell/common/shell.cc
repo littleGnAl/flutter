@@ -2135,9 +2135,9 @@ void Shell::OnPlatformViewAddView(int64_t view_id,
   TRACE_EVENT0("flutter", "Shell::AddView");
   FML_DCHECK(is_set_up_);
   FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
-  FML_DCHECK(view_id != kFlutterImplicitViewId)
-      << "Unexpected request to add the implicit view #"
-      << kFlutterImplicitViewId << ". This view should never be added.";
+  // FML_DCHECK(view_id != kFlutterImplicitViewId)
+  //     << "Unexpected request to add the implicit view #"
+  //     << kFlutterImplicitViewId << ". This view should never be added.";
 
   task_runners_.GetUITaskRunner()->RunNowOrPostTask(
       task_runners_.GetUITaskRunner(), [engine = engine_->GetWeakPtr(),  //

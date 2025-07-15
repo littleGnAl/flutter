@@ -113,6 +113,8 @@ public class AndroidTouchProcessor {
   // The view ID for the only view in a single-view Flutter app.
   private static final int IMPLICIT_VIEW_ID = 0;
 
+  private long flutterViewId = IMPLICIT_VIEW_ID;
+
   @NonNull private final FlutterRenderer renderer;
   @NonNull private final MotionEventTracker motionEventTracker;
 
@@ -138,6 +140,10 @@ public class AndroidTouchProcessor {
     this.renderer = renderer;
     this.motionEventTracker = MotionEventTracker.getInstance();
     this.trackMotionEvents = trackMotionEvents;
+  }
+
+  public void setFlutterViewId(long flutterViewId) {
+    this.flutterViewId = flutterViewId;
   }
 
   public boolean onTouchEvent(@NonNull MotionEvent event) {
@@ -309,7 +315,7 @@ public class AndroidTouchProcessor {
     // TODO(dkwingsmt): Use the correct source view ID once Android supports
     // multiple views.
     // https://github.com/flutter/flutter/issues/134405
-    final int viewId = IMPLICIT_VIEW_ID;
+    final long viewId = this.flutterViewId;// IMPLICIT_VIEW_ID;
     final int pointerId = uniquePointerIdByType(event, pointerIndex);
 
     int pointerKind = getPointerDeviceTypeForToolType(event.getToolType(pointerIndex));
