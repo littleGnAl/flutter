@@ -534,7 +534,7 @@ std::string Engine::DefaultRouteName() {
 }
 
 void Engine::ScheduleFrame(bool regenerate_layer_trees) {
-  FML_DLOG(ERROR) << "Engine::ScheduleFrame";
+  FML_DLOG(ERROR) << "Engine::ScheduleFrame, engine_id: " << engine_id_;
   animator_->RequestFrame(regenerate_layer_trees);
 }
 

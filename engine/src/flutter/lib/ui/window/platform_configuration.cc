@@ -131,6 +131,7 @@ bool PlatformConfiguration::AddView(int64_t view_id,
 }
 
 bool PlatformConfiguration::RemoveView(int64_t view_id) {
+  FML_LOG(ERROR) << "PlatformConfiguration::RemoveView View #" << view_id;
   if (view_id == kFlutterImplicitViewId) {
     FML_LOG(FATAL) << "The implicit view #" << view_id << " cannot be removed.";
     return false;

@@ -197,6 +197,7 @@ void RuntimeController::AddView(int64_t view_id,
 }
 
 bool RuntimeController::RemoveView(int64_t view_id) {
+  FML_DLOG(ERROR) << "RuntimeController::RemoveView view id: " << view_id;
   platform_data_.viewport_metrics_for_views.erase(view_id);
 
   // If the Dart isolate has not been launched yet, the pending
@@ -204,6 +205,7 @@ bool RuntimeController::RemoveView(int64_t view_id) {
   // Notify this callback of the cancellation.
   auto* platform_configuration = GetPlatformConfigurationIfAvailable();
   if (!platform_configuration) {
+    FML_DLOG(ERROR) << "RuntimeController::RemoveView view id: " << !platform_configuration;
     FML_DCHECK(has_flushed_runtime_state_ == false);
     if (pending_add_view_callbacks_.find(view_id) !=
         pending_add_view_callbacks_.end()) {
@@ -406,7 +408,7 @@ std::string RuntimeController::DefaultRouteName() {
 
 // |PlatformConfigurationClient|
 void RuntimeController::ScheduleFrame() {
-  FML_DLOG(ERROR) << "RuntimeController::ScheduleFrame";
+  // FML_DLOG(ERROR) << "RuntimeController::ScheduleFrame";
   client_.ScheduleFrame();
 }
 
@@ -425,7 +427,7 @@ void RuntimeController::Render(int64_t view_id,
     FML_DLOG(ERROR) << "RuntimeController::Render view_metrics == nullptr view_id: " << view_id;
     return;
   }
-  FML_DLOG(ERROR) << "RuntimeController::Render view_id: " << view_id;
+  // FML_DLOG(ERROR) << "RuntimeController::Render view_id: " << view_id;
   client_.Render(view_id, scene->takeLayerTree(width, height),
                  view_metrics->device_pixel_ratio);
   rendered_views_during_frame_.insert(view_id);
@@ -786,9 +788,49 @@ client->Render(view_id, scene, width, height);
 
   // |PlatformConfigurationClient|
   void LightweightEngineMultiViewClient::HandlePlatformMessage(std::unique_ptr<PlatformMessage> message) {
-    if (!child_clients_.empty()) {
-      auto* client = *child_clients_.begin();
+   for (auto* client : child_clients_) {
       client->HandlePlatformMessage(std::move(message));
+      return;
+    }
+
+    if (child_clients_.empty()) {
+      return;
+    }
+
+    // For multiple clients, we need to clone the message for all but the last client
+    auto it = child_clients_.begin();
+    auto end = child_clients_.end();
+
+    // Handle all but the last client by cloning the message
+    while (it != end) {
+      auto* client = *it;
+      ++it;
+
+      if (it == end) {
+        // This is the last client, move the original message
+        client->HandlePlatformMessage(std::move(message));
+      } else {
+        // Clone the message for this client
+        std::unique_ptr<PlatformMessage> cloned_message;
+        if (message->hasData()) {
+          auto cloned_data = fml::MallocMapping::Copy(
+              message->data().GetMapping(),
+              message->data().GetSize()
+          );
+          cloned_message = std::make_unique<PlatformMessage>(
+              message->channel(),
+              std::move(cloned_data),
+              message->response()
+          );
+        } else {
+          cloned_message = std::make_unique<PlatformMessage>(
+              message->channel(),
+              message->response()
+          );
+        }
+
+        client->HandlePlatformMessage(std::move(cloned_message));
+      }
     }
   }
 

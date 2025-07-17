@@ -498,15 +498,16 @@ static void RemoveView(JNIEnv* env,
     bool removed = false;
 
     ANDROID_SHELL_HOLDER->GetPlatformView()->RemoveView(
-            view_id, [&removed](bool result) {
-                              removed = true;
+            view_id, [&removed,view_id](bool result) {
+              removed = true;
+                                    FML_DCHECK(removed);
+              if (!removed) {
+                // NSLog(@"Failed to add view with ID %llu", viewIdentifier);
+                FML_LOG(ERROR) << "Failed to remove view with ID" << view_id;
+              }
                             });
 
-      FML_DCHECK(removed);
-    if (!removed) {
-      // NSLog(@"Failed to add view with ID %llu", viewIdentifier);
-      FML_LOG(ERROR) << "Failed to remove view with ID" << view_id;
-    }
+
 
 
 }

@@ -703,10 +703,11 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
     std::optional<fml::TimePoint> presentation_time) {
   FML_DCHECK(surface_);
 
-  FML_DLOG(ERROR) << "Rasterizer::DrawToSurfaceUnsafe view id: " << view_id;
+  // FML_DLOG(ERROR) << "Rasterizer::DrawToSurfaceUnsafe view id: " << view_id;
 
   DlCanvas* embedder_root_canvas = nullptr;
   if (external_view_embedder_) {
+    external_view_embedder_->SetCurrentProcessingViewId(view_id);
     external_view_embedder_->PrepareFlutterView(
         ToSkISize(layer_tree.frame_size()), device_pixel_ratio);
     // TODO(dkwingsmt): Add view ID here.
@@ -796,6 +797,7 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
       external_view_embedder_->SubmitFlutterView(
           view_id, surface_->GetContext(), surface_->GetAiksContext(),
           std::move(frame));
+      external_view_embedder_->ResetProcessingViewId();
     } else {
       frame->Submit();
     }
