@@ -40,17 +40,20 @@ void AndroidSurfaceVKImpeller::TeardownOnScreenContext() {
 
 std::unique_ptr<Surface> AndroidSurfaceVKImpeller::CreateGPUSurface(
     GrDirectContext* gr_context) {
+      // FML_LOG(ERROR) << "AndroidSurfaceVKImpeller::CreateGPUSurface IsValid()" << (IsValid());
   if (!IsValid()) {
     return nullptr;
   }
 
   if (!native_window_ || !native_window_->IsValid()) {
+    // FML_LOG(ERROR) << "AndroidSurfaceVKImpeller::CreateGPUSurface native_window_";
     return nullptr;
   }
 
   std::unique_ptr<GPUSurfaceVulkanImpeller> gpu_surface =
       std::make_unique<GPUSurfaceVulkanImpeller>(nullptr, surface_context_vk_);
 
+      // FML_LOG(ERROR) << "AndroidSurfaceVKImpeller::CreateGPUSurface" << (gpu_surface->IsValid());
   if (!gpu_surface->IsValid()) {
     return nullptr;
   }

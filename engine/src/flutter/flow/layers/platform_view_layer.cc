@@ -26,11 +26,12 @@ void PlatformViewLayer::Preroll(PrerollContext* context) {
   MutatorsStack mutators;
   context->state_stack.fill(&mutators);
   std::unique_ptr<EmbeddedViewParams> params =
-      std::make_unique<EmbeddedViewParams>(context->state_stack.matrix(), size_,
-                                           mutators);
-  context->view_embedder->PrerollCompositeEmbeddedView(view_id_,
+      std::make_unique<EmbeddedViewParams>(
+          ToSkMatrix(context->state_stack.matrix()), ToSkSize(size_), mutators);
+  context->view_embedder->PrerollCompositeEmbeddedView(context->flutter_view_id,
+                                                       view_id_,
                                                        std::move(params));
-  context->view_embedder->PushVisitedPlatformView(view_id_);
+  context->view_embedder->PushVisitedPlatformView(context->flutter_view_id, view_id_);
 }
 
 void PlatformViewLayer::Paint(PaintContext& context) const {
@@ -39,7 +40,7 @@ void PlatformViewLayer::Paint(PaintContext& context) const {
                        "does not support embedding";
     return;
   }
-  DlCanvas* canvas = context.view_embedder->CompositeEmbeddedView(view_id_);
+  DlCanvas* canvas = context.view_embedder->CompositeEmbeddedView(context.flutter_view_id, view_id_);
   context.canvas = canvas;
   context.state_stack.set_delegate(canvas);
   context.rendering_above_platform_view = true;

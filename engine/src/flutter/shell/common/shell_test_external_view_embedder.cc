@@ -46,6 +46,7 @@ void ShellTestExternalViewEmbedder::BeginFrame(
 
 // |ExternalViewEmbedder|
 void ShellTestExternalViewEmbedder::PrepareFlutterView(
+  int64_t flutter_view_id,
     DlISize frame_size,
     double device_pixel_ratio) {
   visited_platform_views_.clear();
@@ -55,6 +56,7 @@ void ShellTestExternalViewEmbedder::PrepareFlutterView(
 
 // |ExternalViewEmbedder|
 void ShellTestExternalViewEmbedder::PrerollCompositeEmbeddedView(
+  int64_t flutter_view_id,
     int64_t view_id,
     std::unique_ptr<EmbeddedViewParams> params) {
   DlRect view_bounds = DlRect::MakeSize(frame_size_);
@@ -64,18 +66,20 @@ void ShellTestExternalViewEmbedder::PrerollCompositeEmbeddedView(
 
 // |ExternalViewEmbedder|
 PostPrerollResult ShellTestExternalViewEmbedder::PostPrerollAction(
+  int64_t flutter_view_id,
     const fml::RefPtr<fml::RasterThreadMerger>& raster_thread_merger) {
   FML_DCHECK(raster_thread_merger);
   return post_preroll_result_;
 }
 
 // |ExternalViewEmbedder|
-void ShellTestExternalViewEmbedder::PushVisitedPlatformView(int64_t view_id) {
+void ShellTestExternalViewEmbedder::PushVisitedPlatformView(int64_t flutter_view_id, int64_t view_id) {
   visited_platform_views_.push_back(view_id);
 }
 
 // |ExternalViewEmbedder|
 void ShellTestExternalViewEmbedder::PushFilterToVisitedPlatformViews(
+  int64_t flutter_view_id,
     const std::shared_ptr<DlImageFilter>& filter,
     const DlRect& filter_rect) {
   for (int64_t id : visited_platform_views_) {
@@ -87,6 +91,7 @@ void ShellTestExternalViewEmbedder::PushFilterToVisitedPlatformViews(
 }
 
 DlCanvas* ShellTestExternalViewEmbedder::CompositeEmbeddedView(
+  int64_t flutter_view_id,
     int64_t view_id) {
   return slices_[view_id]->canvas();
 }

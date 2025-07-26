@@ -79,6 +79,7 @@ void Rasterizer::SetImpellerContext(
 }
 
 void Rasterizer::Setup(std::unique_ptr<Surface> surface) {
+  FML_LOG(ERROR) << "Rasterizer::Setup";
   surface_ = std::move(surface);
 
   if (max_cache_bytes_.has_value()) {
@@ -87,27 +88,37 @@ void Rasterizer::Setup(std::unique_ptr<Surface> surface) {
   }
 
   auto context_switch = surface_->MakeRenderContextCurrent();
+  // FML_LOG(ERROR) << "auto context_switch = surface_->MakeRenderContextCurrent();";
   if (context_switch->GetResult()) {
     compositor_context_->OnGrContextCreated();
   }
+  // FML_LOG(ERROR) << "auto context_switch = surface_->MakeRenderContextCurrent();2222";
 
   if (external_view_embedder_ &&
       external_view_embedder_->SupportsDynamicThreadMerging() &&
       !raster_thread_merger_) {
+        // FML_LOG(ERROR) << "external_view_embedder_->SupportsDynamicThreadMerging()";
     const auto platform_id =
         delegate_.GetTaskRunners().GetPlatformTaskRunner()->GetTaskQueueId();
     const auto gpu_id =
         delegate_.GetTaskRunners().GetRasterTaskRunner()->GetTaskQueueId();
+        // FML_LOG(ERROR) << "fml::RasterThreadMerger::CreateOrShareThreadMerger111";
     raster_thread_merger_ = fml::RasterThreadMerger::CreateOrShareThreadMerger(
         delegate_.GetParentRasterThreadMerger(), platform_id, gpu_id);
+        // FML_LOG(ERROR) << "fml::RasterThreadMerger::CreateOrShareThreadMerger222";
   }
   if (raster_thread_merger_) {
+    // FML_LOG(ERROR) << "raster_thread_merger_1111";
     raster_thread_merger_->SetMergeUnmergeCallback([this]() {
       // Clear the GL context after the thread configuration has changed.
+      // FML_LOG(ERROR) << "surface_->ClearRenderContext();1111";
       if (surface_) {
+// FML_LOG(ERROR) << "surface_->ClearRenderContext();2222";
         surface_->ClearRenderContext();
+        // FML_LOG(ERROR) << "surface_->ClearRenderContext();";
       }
     });
+    // FML_LOG(ERROR) << "raster_thread_merger_2222";
   }
 }
 
@@ -118,6 +129,7 @@ void Rasterizer::TeardownExternalViewEmbedder() {
 }
 
 void Rasterizer::Teardown() {
+  FML_LOG(ERROR) << "Rasterizer::Teardown";
   is_torn_down_ = true;
   if (surface_) {
     auto context_switch = surface_->MakeRenderContextCurrent();
@@ -223,6 +235,7 @@ void Rasterizer::DrawLastLayerTrees(
   }
   std::vector<std::unique_ptr<LayerTreeTask>> tasks;
   for (auto& [view_id, view_record] : view_records_) {
+    FML_LOG(ERROR) << "auto& [view_id, view_record] : view_records_ view_id: " << view_id;
     if (view_record.last_successful_task) {
       tasks.push_back(std::move(view_record.last_successful_task));
     }
@@ -482,6 +495,7 @@ Rasterizer::DoDrawResult Rasterizer::DoDraw(
     return DoDrawResult{DoDrawStatus::kDone};
   }
   if (!surface_) {
+    FML_LOG(ERROR) << "Rasterizer::DoDraw !surface_";
     return DoDrawResult{DoDrawStatus::kNotSetUp};
   }
 
@@ -615,6 +629,7 @@ std::unique_ptr<FrameItem> Rasterizer::DrawToSurfacesUnsafe(
   // First traverse: Filter out discarded trees
   auto task_iter = tasks.begin();
   while (task_iter != tasks.end()) {
+
     LayerTreeTask& task = **task_iter;
     if (delegate_.ShouldDiscardLayerTree(task.view_id, *task.layer_tree)) {
       EnsureViewRecord(task.view_id).last_draw_status =
@@ -705,8 +720,9 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
 
   DlCanvas* embedder_root_canvas = nullptr;
   if (external_view_embedder_) {
-    external_view_embedder_->PrepareFlutterView(layer_tree.frame_size(),
-                                                device_pixel_ratio);
+    external_view_embedder_->PrepareFlutterView(
+        view_id,
+        layer_tree.frame_size(), device_pixel_ratio);
     // TODO(dkwingsmt): Add view ID here.
     embedder_root_canvas = external_view_embedder_->GetRootCanvas();
   }
@@ -715,7 +731,8 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
   //
   // Deleting a surface also clears the GL context. Therefore, acquire the
   // frame after calling `BeginFrame` as this operation resets the GL context.
-  auto frame = surface_->AcquireFrame(layer_tree.frame_size());
+  // FML_LOG(ERROR) << "Rasterizer::DrawToSurfaceUnsafe surface_->AcquireFrame view_id: " << view_id;
+  auto frame = surface_->AcquireFrame(view_id, layer_tree.frame_size());
   if (frame == nullptr) {
     return DrawSurfaceStatus::kFailed;
   }
@@ -723,8 +740,8 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
   // If the external view embedder has specified an optional root surface, the
   // root surface transformation is set by the embedder instead of
   // having to apply it here.
-  DlMatrix root_surface_transformation =
-      embedder_root_canvas ? DlMatrix() : surface_->GetRootTransformation();
+  SkMatrix root_surface_transformation =
+      embedder_root_canvas ? DlMatrix() : surface_->GetRootTransformation(view_id);
 
   auto root_surface_canvas =
       embedder_root_canvas ? embedder_root_canvas : frame->Canvas();
@@ -737,7 +754,8 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
       frame->framebuffer_info()
           .supports_readback,           // surface supports pixel reads
       raster_thread_merger_,            // thread merger
-      surface_->GetAiksContext().get()  // aiks context
+      surface_->GetAiksContext().get(),  // aiks context
+      view_id                           // flutter view id
   );
   if (compositor_frame) {
     NOT_SLIMPELLER(compositor_context_->raster_cache().BeginFrame());
@@ -839,7 +857,7 @@ static sk_sp<SkData> ScreenshotLayerTreeAsPicture(
   // https://github.com/flutter/flutter/issues/23435
   auto frame = compositor_context.AcquireFrame(nullptr, &canvas, nullptr,
                                                root_surface_transformation,
-                                               false, true, nullptr, nullptr);
+                                               false, true, nullptr, nullptr, kFlutterImplicitViewId);
   frame->Raster(*tree, true, nullptr);
 
 #if defined(OS_FUCHSIA)
@@ -876,7 +894,8 @@ static void RenderFrameForScreenshot(
       /*instrumentation_enabled=*/false,
       /*surface_supports_readback=*/true,
       /*raster_thread_merger=*/nullptr,
-      /*aiks_context=*/aiks_context.get());
+      /*aiks_context=*/aiks_context.get(),
+      /*flutter_view_id*/kFlutterImplicitViewId);
   canvas->Clear(DlColor::kTransparent());
   frame->Raster(*tree, true, nullptr);
   canvas->Flush();

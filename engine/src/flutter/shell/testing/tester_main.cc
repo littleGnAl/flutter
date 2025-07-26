@@ -156,16 +156,17 @@ class TesterExternalViewEmbedder : public ExternalViewEmbedder {
                       raster_thread_merger) override {}
 
   // |ExternalViewEmbedder|
-  void PrepareFlutterView(DlISize frame_size,
+  void PrepareFlutterView(int64_t flutter_view_id, DlISize frame_size,
                           double device_pixel_ratio) override {}
 
   // |ExternalViewEmbedder|
   void PrerollCompositeEmbeddedView(
+    int64_t flutter_view_id,
       int64_t view_id,
       std::unique_ptr<EmbeddedViewParams> params) override {}
 
   // |ExternalViewEmbedder|
-  DlCanvas* CompositeEmbeddedView(int64_t view_id) override {
+  DlCanvas* CompositeEmbeddedView(int64_t flutter_view_id, int64_t view_id) override {
     return &builder_;
   }
 

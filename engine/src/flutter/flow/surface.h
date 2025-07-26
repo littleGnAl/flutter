@@ -35,9 +35,17 @@ class Surface {
 
   virtual bool IsValid() = 0;
 
-  virtual std::unique_ptr<SurfaceFrame> AcquireFrame(const DlISize& size) = 0;
+  virtual std::unique_ptr<SurfaceFrame> AcquireFrame(const SkISize& size) = 0;
 
-  virtual DlMatrix GetRootTransformation() const = 0;
+  virtual std::unique_ptr<SurfaceFrame> AcquireFrame(int64_t view_id, const SkISize& size) {
+    return AcquireFrame(size);
+  }
+
+  virtual SkMatrix GetRootTransformation() const = 0;
+
+  virtual SkMatrix GetRootTransformation(int64_t view_id) const {
+return GetRootTransformation();
+  }
 
   virtual GrDirectContext* GetContext() = 0;
 
@@ -59,6 +67,24 @@ class Surface {
 
  private:
   FML_DISALLOW_COPY_AND_ASSIGN(Surface);
+};
+
+class SurfaceHolder {
+ public:
+  explicit SurfaceHolder(int64_t view_id, std::unique_ptr<Surface> surface)
+      : view_id_(view_id), surface_(std::move(surface)) {}
+
+  ~SurfaceHolder();
+
+  int64_t GetViewId() const { return view_id_; }
+
+  Surface* GetSurface() const { return surface_.get(); }
+
+ private:
+  int64_t view_id_;
+  std::unique_ptr<Surface> surface_;
+
+  FML_DISALLOW_COPY_AND_ASSIGN(SurfaceHolder);
 };
 
 }  // namespace flutter

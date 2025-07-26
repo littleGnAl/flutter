@@ -35,6 +35,7 @@ bool AndroidSurfaceGLImpeller::IsValid() const {
 // |AndroidSurface|
 std::unique_ptr<Surface> AndroidSurfaceGLImpeller::CreateGPUSurface(
     GrDirectContext* gr_context) {
+      FML_LOG(ERROR) << "AndroidSurfaceGLImpeller::CreateGPUSurface";
   auto surface = std::make_unique<GPUSurfaceGLImpeller>(
       this,                                    // delegate
       android_context_->GetImpellerContext(),  // context
@@ -111,11 +112,14 @@ AndroidSurfaceGLImpeller::GetImpellerContext() {
 // |GPUSurfaceGLDelegate|
 std::unique_ptr<GLContextResult>
 AndroidSurfaceGLImpeller::GLContextMakeCurrent() {
+  // FML_LOG(ERROR) << "AndroidSurfaceGLImpeller::GLContextMakeCurren";
   return std::make_unique<GLContextDefaultResult>(OnGLContextMakeCurrent());
 }
 
 bool AndroidSurfaceGLImpeller::OnGLContextMakeCurrent() {
+  // FML_LOG(ERROR) << "AndroidSurfaceGLImpeller::OnGLContextMakeCurrent";
   if (!onscreen_surface_) {
+    // FML_LOG(ERROR) << "AndroidSurfaceGLImpeller::OnGLContextMakeCurrent111";
     return false;
   }
 

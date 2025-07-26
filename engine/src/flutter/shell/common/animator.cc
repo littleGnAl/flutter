@@ -274,8 +274,10 @@ void Animator::AwaitVSync() {
   waiter_->AsyncWaitForVsync(
       [self = weak_factory_.GetWeakPtr()](
           std::unique_ptr<FrameTimingsRecorder> frame_timings_recorder) {
+
         if (self) {
           if (self->CanReuseLastLayerTrees()) {
+            FML_LOG(ERROR) << "waiter_->AsyncWaitForVsync, self->CanReuseLastLayerTrees()";
             self->DrawLastLayerTrees(std::move(frame_timings_recorder));
           } else {
             self->BeginFrame(std::move(frame_timings_recorder));

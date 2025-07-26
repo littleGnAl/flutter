@@ -29,18 +29,19 @@ void MockViewEmbedder::BeginFrame(
     const fml::RefPtr<fml::RasterThreadMerger>& raster_thread_merger) {}
 
 // |ExternalViewEmbedder|
-void MockViewEmbedder::PrepareFlutterView(DlISize frame_size,
+void MockViewEmbedder::PrepareFlutterView(int64_t flutter_view_id, SkISize frame_size,
                                           double device_pixel_ratio) {}
 
 // |ExternalViewEmbedder|
 void MockViewEmbedder::PrerollCompositeEmbeddedView(
+  int64_t flutter_view_id,
     int64_t view_id,
     std::unique_ptr<EmbeddedViewParams> params) {
   prerolled_views_.emplace_back(view_id);
 }
 
 // |ExternalViewEmbedder|
-DlCanvas* MockViewEmbedder::CompositeEmbeddedView(int64_t view_id) {
+DlCanvas* MockViewEmbedder::CompositeEmbeddedView(int64_t flutter_view_id, int64_t view_id) {
   painted_views_.emplace_back(view_id);
   DlCanvas* canvas = contexts_.front();
   contexts_.pop_front();

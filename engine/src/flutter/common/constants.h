@@ -33,6 +33,8 @@ constexpr double kMegaByteSizeInBytes = (1 << 20);
 // implicit view if the target ID is `kFlutterImplicitViewId`, unless specified
 // otherwise.
 constexpr int64_t kFlutterImplicitViewId = 0;
+
+constexpr int64_t kInvalidFlutterViewId = -1;
 }  // namespace flutter
 
 #endif  // FLUTTER_COMMON_CONSTANTS_H_

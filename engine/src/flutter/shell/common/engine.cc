@@ -508,6 +508,7 @@ void Engine::OnAllViewsRendered() {
 void Engine::Render(int64_t view_id,
                     std::unique_ptr<flutter::LayerTree> layer_tree,
                     float device_pixel_ratio) {
+  // FML_LOG(ERROR) << "Engine::Render: view_id: " << view_id;
   if (!layer_tree) {
     return;
   }
@@ -517,6 +518,7 @@ void Engine::Render(int64_t view_id,
     return;
   }
 
+  // FML_LOG(ERROR) << "Engine::Render111: view_id: " << view_id;
   animator_->Render(view_id, std::move(layer_tree), device_pixel_ratio);
 }
 

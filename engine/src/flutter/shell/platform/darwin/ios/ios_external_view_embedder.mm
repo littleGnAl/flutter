@@ -40,13 +40,14 @@ void IOSExternalViewEmbedder::BeginFrame(
     const fml::RefPtr<fml::RasterThreadMerger>& raster_thread_merger) {}
 
 // |ExternalViewEmbedder|
-void IOSExternalViewEmbedder::PrepareFlutterView(DlISize frame_size, double device_pixel_ratio) {
+void IOSExternalViewEmbedder::PrepareFlutterView(int64_t flutter_view_id, DlISize frame_size, double device_pixel_ratio) {
   FML_CHECK(platform_views_controller_);
   [platform_views_controller_ beginFrameWithSize:frame_size];
 }
 
 // |ExternalViewEmbedder|
 void IOSExternalViewEmbedder::PrerollCompositeEmbeddedView(
+  int64_t flutter_view_id,
     int64_t view_id,
     std::unique_ptr<EmbeddedViewParams> params) {
   TRACE_EVENT0("flutter", "IOSExternalViewEmbedder::PrerollCompositeEmbeddedView");
@@ -56,6 +57,7 @@ void IOSExternalViewEmbedder::PrerollCompositeEmbeddedView(
 
 // |ExternalViewEmbedder|
 PostPrerollResult IOSExternalViewEmbedder::PostPrerollAction(
+  int64_t flutter_view_id,
     const fml::RefPtr<fml::RasterThreadMerger>& raster_thread_merger) {
   TRACE_EVENT0("flutter", "IOSExternalViewEmbedder::PostPrerollAction");
   FML_CHECK(platform_views_controller_);
@@ -65,7 +67,7 @@ PostPrerollResult IOSExternalViewEmbedder::PostPrerollAction(
 }
 
 // |ExternalViewEmbedder|
-DlCanvas* IOSExternalViewEmbedder::CompositeEmbeddedView(int64_t view_id) {
+DlCanvas* IOSExternalViewEmbedder::CompositeEmbeddedView(int64_t flutter_view_id, int64_t view_id) {
   TRACE_EVENT0("flutter", "IOSExternalViewEmbedder::CompositeEmbeddedView");
   FML_CHECK(platform_views_controller_);
   return [platform_views_controller_ compositeEmbeddedViewWithId:view_id];
@@ -103,13 +105,14 @@ bool IOSExternalViewEmbedder::SupportsDynamicThreadMerging() {
 
 // |ExternalViewEmbedder|
 void IOSExternalViewEmbedder::PushFilterToVisitedPlatformViews(
+  int64_t flutter_view_id,
     const std::shared_ptr<DlImageFilter>& filter,
     const DlRect& filter_rect) {
   [platform_views_controller_ pushFilterToVisitedPlatformViews:filter withRect:filter_rect];
 }
 
 // |ExternalViewEmbedder|
-void IOSExternalViewEmbedder::PushVisitedPlatformView(int64_t view_id) {
+void IOSExternalViewEmbedder::PushVisitedPlatformView(int64_t flutter_view_id, int64_t view_id) {
   [platform_views_controller_ pushVisitedPlatformViewId:view_id];
 }
 

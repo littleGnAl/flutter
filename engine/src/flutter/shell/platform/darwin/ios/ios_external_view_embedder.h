@@ -35,21 +35,23 @@ class IOSExternalViewEmbedder : public ExternalViewEmbedder {
                       raster_thread_merger) override;
 
   // |ExternalViewEmbedder|
-  void PrepareFlutterView(DlISize frame_size,
+  void PrepareFlutterView(int64_t flutter_view_id, DlISize frame_size,
                           double device_pixel_ratio) override;
 
   // |ExternalViewEmbedder|
   void PrerollCompositeEmbeddedView(
+      int64_t flutter_view_id,
       int64_t view_id,
       std::unique_ptr<flutter::EmbeddedViewParams> params) override;
 
   // |ExternalViewEmbedder|
   PostPrerollResult PostPrerollAction(
+      int64_t flutter_view_id,
       const fml::RefPtr<fml::RasterThreadMerger>& raster_thread_merger)
       override;
 
   // |ExternalViewEmbedder|
-  DlCanvas* CompositeEmbeddedView(int64_t view_id) override;
+  DlCanvas* CompositeEmbeddedView(int64_t flutter_view_id, int64_t view_id) override;
 
   // |ExternalViewEmbedder|
   void SubmitFlutterView(
@@ -68,11 +70,12 @@ class IOSExternalViewEmbedder : public ExternalViewEmbedder {
 
   // |ExternalViewEmbedder|
   void PushFilterToVisitedPlatformViews(
+      int64_t flutter_view_id,
       const std::shared_ptr<DlImageFilter>& filter,
       const DlRect& filter_rect) override;
 
   // |ExternalViewEmbedder|
-  void PushVisitedPlatformView(int64_t view_id) override;
+  void PushVisitedPlatformView(int64_t flutter_view_id, int64_t view_id) override;
 
   FML_DISALLOW_COPY_AND_ASSIGN(IOSExternalViewEmbedder);
 };

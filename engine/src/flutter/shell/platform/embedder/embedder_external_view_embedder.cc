@@ -63,6 +63,7 @@ void EmbedderExternalViewEmbedder::BeginFrame(
 
 // |ExternalViewEmbedder|
 void EmbedderExternalViewEmbedder::PrepareFlutterView(
+    int64_t flutter_view_id,
     DlISize frame_size,
     double device_pixel_ratio) {
   Reset();
@@ -78,6 +79,7 @@ void EmbedderExternalViewEmbedder::PrepareFlutterView(
 
 // |ExternalViewEmbedder|
 void EmbedderExternalViewEmbedder::PrerollCompositeEmbeddedView(
+    int64_t flutter_view_id,
     int64_t view_id,
     std::unique_ptr<EmbeddedViewParams> params) {
   auto vid = EmbedderExternalView::ViewIdentifier(view_id);
@@ -106,7 +108,7 @@ DlCanvas* EmbedderExternalViewEmbedder::GetRootCanvas() {
 }
 
 // |ExternalViewEmbedder|
-DlCanvas* EmbedderExternalViewEmbedder::CompositeEmbeddedView(int64_t view_id) {
+DlCanvas* EmbedderExternalViewEmbedder::CompositeEmbeddedView(int64_t flutter_view_id, int64_t view_id) {
   auto vid = EmbedderExternalView::ViewIdentifier(view_id);
   auto found = pending_views_.find(vid);
   if (found == pending_views_.end()) {

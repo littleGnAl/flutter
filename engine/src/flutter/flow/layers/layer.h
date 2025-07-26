@@ -12,6 +12,7 @@
 
 #include "flutter/common/graphics/texture.h"
 #include "flutter/common/macros.h"
+#include "flutter/common/constants.h"
 #include "flutter/display_list/dl_canvas.h"
 #include "flutter/flow/diff_context.h"
 #include "flutter/flow/embedded_views.h"
@@ -73,6 +74,8 @@ struct PrerollContext {
   int renderable_state_flags = 0;
 
   std::vector<RasterCacheItem*>* raster_cached_entries;
+
+  int64_t flutter_view_id = kFlutterImplicitViewId;
 };
 
 struct PaintContext {
@@ -106,6 +109,8 @@ struct PaintContext {
 
   bool impeller_enabled = false;
   impeller::AiksContext* aiks_context;
+
+  int64_t flutter_view_id = kFlutterImplicitViewId;
 };
 
 // Represents a single composited layer. Created on the UI thread but then

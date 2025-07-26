@@ -44,26 +44,28 @@ void AndroidExternalViewEmbedderWrapper::EnsureInitialized() {
 
 // |ExternalViewEmbedder|
 void AndroidExternalViewEmbedderWrapper::PrerollCompositeEmbeddedView(
+    int64_t flutter_view_id,
     int64_t view_id,
     std::unique_ptr<EmbeddedViewParams> params) {
   EnsureInitialized();
   if (hcpp_view_embedder_) {
-    hcpp_view_embedder_->PrerollCompositeEmbeddedView(view_id,
+    hcpp_view_embedder_->PrerollCompositeEmbeddedView(flutter_view_id, view_id,
                                                       std::move(params));
   } else {
-    non_hcpp_view_embedder_->PrerollCompositeEmbeddedView(view_id,
+    non_hcpp_view_embedder_->PrerollCompositeEmbeddedView(flutter_view_id, view_id,
                                                           std::move(params));
   }
 }
 
 // |ExternalViewEmbedder|
 DlCanvas* AndroidExternalViewEmbedderWrapper::CompositeEmbeddedView(
+    int64_t flutter_view_id,
     int64_t view_id) {
   EnsureInitialized();
   if (hcpp_view_embedder_) {
-    return hcpp_view_embedder_->CompositeEmbeddedView(view_id);
+    return hcpp_view_embedder_->CompositeEmbeddedView(flutter_view_id, view_id);
   } else {
-    return non_hcpp_view_embedder_->CompositeEmbeddedView(view_id);
+    return non_hcpp_view_embedder_->CompositeEmbeddedView(flutter_view_id, view_id);
   }
 }
 
@@ -73,6 +75,8 @@ void AndroidExternalViewEmbedderWrapper::SubmitFlutterView(
     GrDirectContext* context,
     const std::shared_ptr<impeller::AiksContext>& aiks_context,
     std::unique_ptr<SurfaceFrame> frame) {
+
+FML_LOG(ERROR) << "AndroidExternalViewEmbedderWrapper::SubmitFlutterView with viewid: " << flutter_view_id;
   EnsureInitialized();
   if (hcpp_view_embedder_) {
     hcpp_view_embedder_->SubmitFlutterView(flutter_view_id, context,
@@ -85,12 +89,13 @@ void AndroidExternalViewEmbedderWrapper::SubmitFlutterView(
 
 // |ExternalViewEmbedder|
 PostPrerollResult AndroidExternalViewEmbedderWrapper::PostPrerollAction(
+    int64_t flutter_view_id,
     const fml::RefPtr<fml::RasterThreadMerger>& raster_thread_merger) {
   EnsureInitialized();
   if (hcpp_view_embedder_) {
-    return hcpp_view_embedder_->PostPrerollAction(raster_thread_merger);
+    return hcpp_view_embedder_->PostPrerollAction(flutter_view_id, raster_thread_merger);
   } else {
-    return non_hcpp_view_embedder_->PostPrerollAction(raster_thread_merger);
+    return non_hcpp_view_embedder_->PostPrerollAction(flutter_view_id, raster_thread_merger);
   }
 }
 
@@ -113,13 +118,14 @@ void AndroidExternalViewEmbedderWrapper::BeginFrame(
 
 // |ExternalViewEmbedder|
 void AndroidExternalViewEmbedderWrapper::PrepareFlutterView(
+    int64_t flutter_view_id,
     DlISize frame_size,
     double device_pixel_ratio) {
   EnsureInitialized();
   if (hcpp_view_embedder_) {
-    hcpp_view_embedder_->PrepareFlutterView(frame_size, device_pixel_ratio);
+    hcpp_view_embedder_->PrepareFlutterView(flutter_view_id, frame_size, device_pixel_ratio);
   } else {
-    non_hcpp_view_embedder_->PrepareFlutterView(frame_size, device_pixel_ratio);
+    non_hcpp_view_embedder_->PrepareFlutterView(flutter_view_id, frame_size, device_pixel_ratio);
   }
 }
 

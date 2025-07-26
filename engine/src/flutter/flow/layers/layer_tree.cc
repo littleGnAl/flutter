@@ -56,6 +56,7 @@ bool LayerTree::Preroll(CompositorContext::ScopedFrame& frame,
       .ui_time = frame.context().ui_time(),
       .texture_registry = frame.context().texture_registry(),
       .raster_cached_entries = &raster_cache_items_,
+      .flutter_view_id = frame.GetFlutterViewId(),
   };
 
   root_layer_->Preroll(&context);
@@ -129,6 +130,7 @@ void LayerTree::Paint(CompositorContext::ScopedFrame& frame,
 #endif  //  !SLIMPELLER
       .impeller_enabled              = !!frame.aiks_context(),
       .aiks_context                  = frame.aiks_context(),
+      .flutter_view_id               = frame.GetFlutterViewId(),
       // clang-format on
   };
 

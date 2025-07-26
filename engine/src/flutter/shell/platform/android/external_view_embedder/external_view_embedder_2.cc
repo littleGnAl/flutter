@@ -9,6 +9,7 @@
 #include "flutter/fml/trace_event.h"
 #include "fml/make_copyable.h"
 #include "fml/synchronization/count_down_latch.h"
+#include "common/constants.h"
 
 namespace flutter {
 
@@ -27,6 +28,7 @@ AndroidExternalViewEmbedder2::AndroidExternalViewEmbedder2(
 
 // |ExternalViewEmbedder|
 void AndroidExternalViewEmbedder2::PrerollCompositeEmbeddedView(
+    int64_t flutter_view_id,
     int64_t view_id,
     std::unique_ptr<EmbeddedViewParams> params) {
   TRACE_EVENT0("flutter",
@@ -47,7 +49,7 @@ void AndroidExternalViewEmbedder2::PrerollCompositeEmbeddedView(
 }
 
 // |ExternalViewEmbedder|
-DlCanvas* AndroidExternalViewEmbedder2::CompositeEmbeddedView(int64_t view_id) {
+DlCanvas* AndroidExternalViewEmbedder2::CompositeEmbeddedView(int64_t flutter_view_id, int64_t view_id) {
   if (slices_.count(view_id) == 1) {
     return slices_.at(view_id)->canvas();
   }
@@ -102,7 +104,7 @@ void AndroidExternalViewEmbedder2::SubmitFlutterView(
     task_runners_.GetPlatformTaskRunner()->PostTask(
         fml::MakeCopyable([&, latch]() {
           surface_pool_->GetLayer(context, android_context_, jni_facade_,
-                                  surface_factory_);
+                                  surface_factory_, kFlutterImplicitViewId);
           latch->CountDown();
         }));
     latch->Wait();
@@ -123,7 +125,7 @@ void AndroidExternalViewEmbedder2::SubmitFlutterView(
       }
       if (overlay_frame == nullptr) {
         std::shared_ptr<OverlayLayer> layer = surface_pool_->GetLayer(
-            context, android_context_, jni_facade_, surface_factory_);
+            context, android_context_, jni_facade_, surface_factory_, kFlutterImplicitViewId);
         overlay_frame = layer->surface->AcquireFrame(frame_size_);
         overlay_frame->Canvas()->Clear(flutter::DlColor::kTransparent());
       }
@@ -182,6 +184,7 @@ void AndroidExternalViewEmbedder2::SubmitFlutterView(
 
 // |ExternalViewEmbedder|
 PostPrerollResult AndroidExternalViewEmbedder2::PostPrerollAction(
+    int64_t flutter_view_id,
     const fml::RefPtr<fml::RasterThreadMerger>& raster_thread_merger) {
   return PostPrerollResult::kSuccess;
 }
@@ -210,6 +213,7 @@ void AndroidExternalViewEmbedder2::BeginFrame(
 
 // |ExternalViewEmbedder|
 void AndroidExternalViewEmbedder2::PrepareFlutterView(
+    int64_t flutter_view_id,
     DlISize frame_size,
     double device_pixel_ratio) {
   Reset();
@@ -253,7 +257,7 @@ void AndroidExternalViewEmbedder2::DestroySurfaces() {
   fml::AutoResetWaitableEvent latch;
   fml::TaskRunner::RunNowOrPostTask(task_runners_.GetPlatformTaskRunner(),
                                     [&]() {
-                                      surface_pool_->DestroyLayers(jni_facade_);
+                                      surface_pool_->DestroyLayers(jni_facade_, kFlutterImplicitViewId);
                                       latch.Signal();
                                     });
   latch.Wait();

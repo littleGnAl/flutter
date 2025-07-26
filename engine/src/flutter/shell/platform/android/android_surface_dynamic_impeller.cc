@@ -30,6 +30,7 @@ void AndroidSurfaceDynamicImpeller::TeardownOnScreenContext() {
 
 std::unique_ptr<Surface> AndroidSurfaceDynamicImpeller::CreateGPUSurface(
     GrDirectContext* gr_context) {
+      FML_LOG(ERROR) << "AndroidSurfaceDynamicImpeller::CreateGPUSurface";
   if (vulkan_surface_) {
     if (window_) {
       vulkan_surface_->SetNativeWindow(window_, jni_facade_);
@@ -116,6 +117,18 @@ AndroidSurfaceDynamicImpeller::CreateSnapshotSurface() {
 std::shared_ptr<impeller::Context>
 AndroidSurfaceDynamicImpeller::GetImpellerContext() {
   return android_context_->GetImpellerContext();
+}
+
+AndroidSurface *AndroidSurfaceDynamicImpeller::GetBackedSurface() const {
+  // FML_LOG(ERROR) << "AndroidSurfaceDynamicImpeller::GetBackedSurface";
+ if (vulkan_surface_) {
+    return vulkan_surface_.get();
+  }
+  if (gl_surface_) {
+    // FML_LOG(ERROR) << "AndroidSurfaceDynamicImpeller::GetBackedSurface gl_surface_";
+    return gl_surface_.get();
+  }
+  return nullptr;
 }
 
 }  // namespace flutter
