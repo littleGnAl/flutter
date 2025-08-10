@@ -149,6 +149,24 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
 // Function pointers for interacting with the embedder.h API.
 @property(nonatomic) FlutterEngineProcTable& embedderAPI;
 
+/**
+ * An internal method that adds the view controller with the given ID.
+ *
+ * This method assigns the controller with the ID, puts the controller into the
+ * map, and does assertions related to the implicit view ID.
+ */
+- (void)registerViewController:(FlutterViewController*)controller
+                 forIdentifier:(FlutterViewIdentifier)viewIdentifier;
+
+/**
+ * An internal method that removes the view controller with the given ID.
+ *
+ * This method clears the ID of the controller, removes the controller from the
+ * map. This is an no-op if the view ID is not associated with any view
+ * controllers.
+ */
+- (void)deregisterViewControllerForIdentifier:(FlutterViewIdentifier)viewIdentifier;
+
 @end
 
 @implementation FlutterEngine {
@@ -160,6 +178,9 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
 
   FlutterBinaryMessengerRelay* _binaryMessenger;
   FlutterTextureRegistryRelay* _textureRegistry;
+
+  // It can't use NSDictionary, because the values need to be weak references.
+  NSMapTable* _viewControllers;
 }
 
 - (int64_t)engineIdentifier {
@@ -199,6 +220,7 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
   _allowHeadlessExecution = allowHeadlessExecution;
   _labelPrefix = [labelPrefix copy];
   _dartProject = project ?: [[FlutterDartProject alloc] init];
+  _viewControllers = [NSMapTable weakToWeakObjectsMapTable];
 
   _enableEmbedderAPI = _dartProject.settings.enable_embedder_api;
   if (_enableEmbedderAPI) {
@@ -467,6 +489,145 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
     self.flutterViewControllerWillDeallocObserver = nil;
     [self notifyLowMemory];
   }
+}
+
+- (void)registerViewController:(FlutterViewController*)controller
+                 forIdentifier:(FlutterViewIdentifier)viewIdentifier {
+  // _macOSCompositor->AddView(viewIdentifier);
+  // NSAssert(controller != nil, @"The controller must not be nil.");
+  // if (!_multiViewEnabled) {
+  //   NSAssert(controller.engine == nil,
+  //            @"The FlutterViewController is unexpectedly attached to "
+  //            @"engine %@ before initialization.",
+  //            controller.engine);
+  // }
+  NSAssert([_viewControllers objectForKey:@(viewIdentifier)] == nil,
+           @"The requested view ID is occupied.");
+  [_viewControllers setObject:controller forKey:@(viewIdentifier)];
+  // [controller setUpWithEngine:self viewIdentifier:viewIdentifier];
+  // NSAssert(controller.viewIdentifier == viewIdentifier, @"Failed to assign view ID.");
+  // // Verify that the controller's property are updated accordingly. Failing the
+  // // assertions is likely because either the FlutterViewController or the
+  // // FlutterEngine is mocked. Please subclass these classes instead.
+  // NSAssert(controller.attached, @"The FlutterViewController should switch to the attached mode "
+  //                               @"after it is added to a FlutterEngine.");
+  // NSAssert(controller.engine == self,
+  //          @"The FlutterViewController was added to %@, but its engine unexpectedly became %@.",
+  //          self, controller.engine);
+
+  // if (controller.viewLoaded) {
+  //   [self viewControllerViewDidLoad:controller];
+  // }
+
+   if (viewIdentifier != kFlutterImplicitViewId) {
+     // These will be overriden immediately after the FlutterView is created
+     // by actual values.
+    //  FlutterWindowMetricsEvent metrics{
+    //      .struct_size = sizeof(FlutterWindowMetricsEvent),
+    //      .width = 0,
+    //      .height = 0,
+    //      .pixel_ratio = 1.0,
+    //  };
+     ViewportMetrics metrics = {};
+     bool added = false;
+//     FlutterAddViewInfo info{.struct_size = sizeof(FlutterAddViewInfo),
+//                             .view_id = viewIdentifier,
+//                             .view_metrics = &metrics,
+//                             .user_data = &added,
+//                             .add_view_callback = [](const FlutterAddViewResult* r) {
+//                               auto added = reinterpret_cast<bool*>(r->user_data);
+//                               *added = true;
+//                             }};
+//     void AddView(int64_t view_id,
+//                  const ViewportMetrics& viewport_metrics,
+//                  AddViewCallback callback);
+     self.platformView->AddView(viewIdentifier, metrics, [&added] (result){
+       added = result;
+     });
+     // The callback should be called synchronously from platform thread.
+//     _embedderAPI.AddView(_engine, &info);
+     FML_DCHECK(added);
+     if (!added) {
+       NSLog(@"Failed to add view with ID %llu", viewIdentifier);
+     }
+   }
+}
+
+- (void)deregisterViewControllerForIdentifier:(FlutterViewIdentifier)viewIdentifier {
+   if (viewIdentifier != kFlutterImplicitViewId) {
+     bool removed = false;
+    //  FlutterRemoveViewInfo info;
+    //  info.struct_size = sizeof(FlutterRemoveViewInfo);
+    //  info.view_id = viewIdentifier;
+    //  info.user_data = &removed;
+    //  // RemoveViewCallback is not finished synchronously, the remove_view_callback
+    //  // is called from raster thread when the engine knows for sure that the resources
+    //  // associated with the view are no longer needed.
+    //  info.remove_view_callback = [](const FlutterRemoveViewResult* r) {
+    //    auto removed = reinterpret_cast<bool*>(r->user_data);
+    //    [FlutterRunLoop.mainRunLoop performBlock:^{
+    //      *removed = true;
+    //    }];
+    //  };
+
+     NSRunLoop* currentRunLoop = NSRunLoop.currentRunLoop;
+
+     self.platformView->RemoveView(viewIdentifier, [&removed, currentRunLoop](bool result) {
+       CFRunLoopPerformBlock((__bridge CFRunLoopRef)currentRunLoop, kCFRunLoopCommonModes, ^{
+         removed = result;
+       });
+       CFRunLoopWakeUp((__bridge CFRunLoopRef)currentRunLoop);
+     });
+
+//     _embedderAPI.RemoveView(_engine, &info);
+     while (!removed) {
+       [currentRunLoop runMode:NSDefaultRunLoopMode
+                    beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
+     }
+   }
+
+  // _macOSCompositor->RemoveView(viewIdentifier);
+
+  // FlutterViewController* controller = [self viewControllerForIdentifier:viewIdentifier];
+  // // The controller can be nil. The engine stores only a weak ref, and this
+  // // method could have been called from the controller's dealloc.
+  // if (controller != nil) {
+  //   [controller detachFromEngine];
+  //   NSAssert(!controller.attached,
+  //            @"The FlutterViewController unexpectedly stays attached after being removed. "
+  //            @"In unit tests, this is likely because either the FlutterViewController or "
+  //            @"the FlutterEngine is mocked. Please subclass these classes instead.");
+  // }
+   [_viewControllers removeObjectForKey:@(viewIdentifier)];
+
+  // FlutterVSyncWaiter* waiter = nil;
+  // @synchronized(_vsyncWaiters) {
+  //   waiter = [_vsyncWaiters objectForKey:@(viewIdentifier)];
+  //   [_vsyncWaiters removeObjectForKey:@(viewIdentifier)];
+  // }
+  // [waiter invalidate];
+}
+
+- (FlutterViewIdentifier)addViewController:(FlutterViewController*)controller {
+  // if (!_multiViewEnabled) {
+  //   // When multiview is disabled, the engine will only assign views to the implicit view ID.
+  //   // The implicit view ID can be reused if and only if the implicit view is unassigned.
+  //   NSAssert(self.viewController == nil,
+  //            @"The engine already has a view controller for the implicit view.");
+  //   self.viewController = controller;
+  // } else {
+  //   // When multiview is enabled, the engine will assign views to a self-incrementing ID.
+  //   // The implicit view ID can not be reused.
+     FlutterViewIdentifier viewIdentifier = _nextViewIdentifier++;
+     [self registerViewController:controller forIdentifier:viewIdentifier];
+  return viewIdentifier;
+  // }
+//  return kFlutterImplicitViewId;
+}
+
+- (void)removeViewController:(nonnull FlutterViewController*)viewController {
+  // [self deregisterViewControllerForIdentifier:viewController.viewIdentifier];
+  // [self shutDownIfNeeded];
 }
 
 - (void)attachView {
