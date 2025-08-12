@@ -19,6 +19,45 @@ FLUTTER_ASSERT_ARC
 
 namespace flutter {
 
+IOSSurfacesManager::IOSSurfacesManager(const std::shared_ptr<IOSContext>& context)
+    : impeller_context_(context ? context->GetImpellerContext() : nullptr),
+      aiks_context_(context ? context->GetAiksContext() : nullptr) {
+  if (!impeller_context_ || !aiks_context_) {
+    return;
+  }
+}
+
+void IOSSurfacesManager::AddSurface(int64_t view_id, std::unique_ptr<IOSSurface> surface) {
+  ios_surfaces_.emplace(view_id, std::move(surface));
+}
+
+void IOSSurfacesManager::RemoveSurface(int64_t view_id) {
+  ios_surfaces_.erase(view_id);
+}
+
+IOSSurface* IOSSurfacesManager::GetSurface(int64_t view_id) const {
+  auto iter = ios_surfaces_.find(view_id);
+  if (iter != ios_surfaces_.end()) {
+      return iter->second.get();
+  }
+
+  return nullptr;
+}
+
+std::unique_ptr<Surface> IOSSurfacesManager::CreateGPUSurface() {
+  impeller_context_->UpdateOffscreenLayerPixelFormat(
+      impeller::FromMTLPixelFormat(layer_.pixelFormat));
+  IOSSurfacesManager* surfaces_manager_ptr = this;
+  return std::make_unique<GPUSurfaceMetalImpeller>(
+             this,          //
+             aiks_context_, //
+             true,          //
+             [surfaces_manager_ptr](int64_t view_id) {               // get_gpu_surface_delegate
+                  auto *surface = surfaces_manager_ptr->GetSurface(view_id);
+                  return static_cast<IOSSurfaceMetalImpeller*>(surface);;
+              });
+}
+
 PlatformViewIOS::AccessibilityBridgeManager::AccessibilityBridgeManager(
     const std::function<void(bool)>& set_semantics_enabled)
     : AccessibilityBridgeManager(set_semantics_enabled, nullptr) {}
@@ -51,7 +90,8 @@ PlatformViewIOS::PlatformViewIOS(PlatformView::Delegate& delegate,
       platform_views_controller_(platform_views_controller),
       accessibility_bridge_([this](bool enabled) { PlatformView::SetSemanticsEnabled(enabled); }),
       platform_message_handler_(
-          new PlatformMessageHandlerIos(task_runners.GetPlatformTaskRunner())) {}
+          new PlatformMessageHandlerIos(task_runners.GetPlatformTaskRunner())),
+      ios_surfaces_manager_(std::make_unique<IOSSurfacesManager>(context)) {}
 
 PlatformViewIOS::PlatformViewIOS(
     PlatformView::Delegate& delegate,
@@ -118,8 +158,10 @@ void PlatformViewIOS::attachView() {
                                                 "before attaching to PlatformViewIOS.";
   FlutterView* flutter_view = static_cast<FlutterView*>(owner_controller_.view);
   CALayer* ca_layer = flutter_view.layer;
-  ios_surface_ = IOSSurface::Create(ios_context_, ca_layer);
-  FML_DCHECK(ios_surface_ != nullptr);
+  // ios_surface_ = IOSSurface::Create(ios_context_, ca_layer);
+  auto ios_surface = IOSSurface::Create(ios_context_, ca_layer);
+  FML_DCHECK(ios_surface != nullptr);
+  ios_surfaces_manager_->AddSurface(kFlutterImplicitViewId, std::move(ios_surface));
 
   if (accessibility_bridge_) {
     accessibility_bridge_.Set(std::make_unique<AccessibilityBridge>(

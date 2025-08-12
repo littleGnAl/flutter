@@ -24,6 +24,34 @@
 
 namespace flutter {
 
+class IOSSurfacesManager {
+public:
+  IOSSurfacesManager(const std::shared_ptr<IOSContext>& context);
+
+  ~IOSSurfacesManager() = default;
+
+  void AddSurface(int64_t view_id, std::unique_ptr<IOSSurface> surface);
+
+  void RemoveSurface(int64_t view_id);
+
+  IOSSurface* GetSurface(int64_t view_id) const;
+
+  std::unique_ptr<Surface> CreateGPUSurface();
+
+  private:
+    // std::shared_ptr<AndroidSurfaceFactory> surface_factory_;
+
+    // const std::shared_ptr<IOSContext>& ios_context_;
+
+    const std::shared_ptr<impeller::Context> impeller_context_;
+    std::shared_ptr<impeller::AiksContext> aiks_context_;
+    bool is_valid_ = false;
+
+    std::unordered_map<int64_t, std::unique_ptr<IOSSurface>> ios_surfaces_;
+
+    FML_DISALLOW_COPY_AND_ASSIGN(IOSSurfacesManager);
+};
+
 /**
  * A bridge connecting the platform agnostic shell and the iOS embedding.
  *
@@ -167,6 +195,7 @@ class PlatformViewIOS final : public PlatformView {
   std::mutex ios_surface_mutex_;
   std::unique_ptr<IOSSurface> ios_surface_;
   std::shared_ptr<IOSContext> ios_context_;
+  std::unique_ptr<IOSSurfacesManager> ios_surfaces_manager_;
   __weak FlutterPlatformViewsController* platform_views_controller_;
   AccessibilityBridgeManager accessibility_bridge_;
   ScopedObserver dealloc_view_controller_observer_;

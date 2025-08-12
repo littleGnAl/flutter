@@ -20,9 +20,11 @@ namespace flutter {
 class IMPELLER_CA_METAL_LAYER_AVAILABLE GPUSurfaceMetalImpeller
     : public Surface {
  public:
+  using GetGPUSurfaceMetalDelegateCallback = std::function<GPUSurfaceMetalDelegate*(int64_t view_id)>;
   GPUSurfaceMetalImpeller(GPUSurfaceMetalDelegate* delegate,
                           const std::shared_ptr<impeller::AiksContext>& context,
-                          bool render_to_surface = true);
+                          bool render_to_surface = true,
+                          const GetGPUSurfaceMetalDelegateCallback& get_gpu_surface_metal_delegate = {});
 
   // |Surface|
   ~GPUSurfaceMetalImpeller();
@@ -34,6 +36,7 @@ class IMPELLER_CA_METAL_LAYER_AVAILABLE GPUSurfaceMetalImpeller
 
  private:
   const GPUSurfaceMetalDelegate* delegate_;
+  const GetGPUSurfaceMetalDelegateCallback get_gpu_surface_metal_delegate_;
   const MTLRenderTargetType render_target_type_;
   std::shared_ptr<impeller::AiksContext> aiks_context_;
   id<MTLTexture> last_texture_;
@@ -51,16 +54,24 @@ class IMPELLER_CA_METAL_LAYER_AVAILABLE GPUSurfaceMetalImpeller
 
   // |Surface|
   std::unique_ptr<SurfaceFrame> AcquireFrame(
+      int64_t view_id,
       const DlISize& frame_size) override;
 
+  std::unique_ptr<SurfaceFrame> AcquireFrame(
+      const DlISize& frame_size) override {
+    return nullptr;
+  }
+
   std::unique_ptr<SurfaceFrame> AcquireFrameFromCAMetalLayer(
+      int64_t view_id,
       const DlISize& frame_size);
 
   std::unique_ptr<SurfaceFrame> AcquireFrameFromMTLTexture(
+      int64_t view_id,
       const DlISize& frame_size);
 
   // |Surface|
-  DlMatrix GetRootTransformation() const override;
+  DlMatrix GetRootTransformation(int64_t view_id) const override;
 
   // |Surface|
   GrDirectContext* GetContext() override;

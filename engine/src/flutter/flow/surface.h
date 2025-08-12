@@ -35,15 +35,15 @@ class Surface {
 
   virtual bool IsValid() = 0;
 
-  virtual std::unique_ptr<SurfaceFrame> AcquireFrame(const SkISize& size) = 0;
+  virtual std::unique_ptr<SurfaceFrame> AcquireFrame(const DlISize& size) = 0;
 
-  virtual std::unique_ptr<SurfaceFrame> AcquireFrame(int64_t view_id, const SkISize& size) {
+  virtual std::unique_ptr<SurfaceFrame> AcquireFrame(int64_t view_id, const DlISize& size) {
     return AcquireFrame(size);
   }
 
-  virtual SkMatrix GetRootTransformation() const = 0;
+  virtual DlMatrix GetRootTransformation() const = 0;
 
-  virtual SkMatrix GetRootTransformation(int64_t view_id) const {
+  virtual DlMatrix GetRootTransformation(int64_t view_id) const {
 return GetRootTransformation();
   }
 
