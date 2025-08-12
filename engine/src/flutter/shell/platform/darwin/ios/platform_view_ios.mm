@@ -184,12 +184,17 @@ void PlatformViewIOS::RegisterExternalTexture(int64_t texture_id,
 std::unique_ptr<Surface> PlatformViewIOS::CreateRenderingSurface() {
   FML_DCHECK(task_runners_.GetRasterTaskRunner()->RunsTasksOnCurrentThread());
   std::lock_guard<std::mutex> guard(ios_surface_mutex_);
-  if (!ios_surface_) {
+  // if (!ios_surface_) {
+  //   FML_DLOG(INFO) << "Could not CreateRenderingSurface, this PlatformViewIOS "
+  //                     "has no ViewController.";
+  //   return nullptr;
+  // }
+  if (!ios_surfaces_manager_) {
     FML_DLOG(INFO) << "Could not CreateRenderingSurface, this PlatformViewIOS "
                       "has no ViewController.";
     return nullptr;
   }
-  return ios_surface_->CreateGPUSurface();
+  return ios_surfaces_manager_->CreateGPUSurface();
 }
 
 // |PlatformView|
