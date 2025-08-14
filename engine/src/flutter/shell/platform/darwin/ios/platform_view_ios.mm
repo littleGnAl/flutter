@@ -91,7 +91,8 @@ PlatformViewIOS::PlatformViewIOS(PlatformView::Delegate& delegate,
       accessibility_bridge_([this](bool enabled) { PlatformView::SetSemanticsEnabled(enabled); }),
       platform_message_handler_(
           new PlatformMessageHandlerIos(task_runners.GetPlatformTaskRunner())),
-      ios_surfaces_manager_(std::make_unique<IOSSurfacesManager>(context)) {}
+      ios_surfaces_manager_(std::make_unique<IOSSurfacesManager>(context)),
+      viewControllers_([NSMapTable weakToWeakObjectsMapTable]) {}
 
 PlatformViewIOS::PlatformViewIOS(
     PlatformView::Delegate& delegate,
@@ -123,13 +124,20 @@ FlutterViewController* PlatformViewIOS::GetOwnerViewController() const {
 
 void PlatformViewIOS::SetOwnerViewController(__weak FlutterViewController* owner_controller) {
   FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+
+
+
   std::lock_guard<std::mutex> guard(ios_surface_mutex_);
-  if (ios_surface_ || !owner_controller) {
-    NotifyDestroyed();
-    ios_surface_.reset();
-    accessibility_bridge_.Clear();
-  }
-  owner_controller_ = owner_controller;
+  // if (ios_surface_ || !owner_controller) {
+  //   NotifyDestroyed();
+  //   ios_surface_.reset();
+  //   accessibility_bridge_.Clear();
+  // }
+  // owner_controller_ = owner_controller;
+  FlutterViewIdentifier viewIdentifier = owner_controller.viewIdentifier;
+  NSAssert([viewControllers_ objectForKey:@(viewIdentifier)] == nil,
+           @"The requested view ID is occupied.");
+  [viewControllers_ setObject:owner_controller forKey:@(viewIdentifier)];
 
   // Add an observer that will clear out the owner_controller_ ivar and
   // the accessibility_bridge_ in case the view controller is deleted.
@@ -139,12 +147,17 @@ void PlatformViewIOS::SetOwnerViewController(__weak FlutterViewController* owner
                    queue:[NSOperationQueue mainQueue]
               usingBlock:^(NSNotification* note) {
                 // Implicit copy of 'this' is fine.
-                accessibility_bridge_.Clear();
-                owner_controller_ = nil;
+                FlutterViewController* owner_controller =
+                  (FlutterViewController*)note.object;
+                if (owner_controller.viewIdentifier == kFlutterImplicitViewId) {
+                  accessibility_bridge_.Clear();
+                }
+
+                // owner_controller_ = nil;
               }]);
 
-  if (owner_controller_ && owner_controller_.isViewLoaded) {
-    this->attachView();
+  if (owner_controller && owner_controller.isViewLoaded) {
+    this->attachView(viewIdentifier);
   }
   // Do not call `NotifyCreated()` here - let FlutterViewController take care
   // of that when its Viewport is sized.  If `NotifyCreated()` is called here,
@@ -152,20 +165,26 @@ void PlatformViewIOS::SetOwnerViewController(__weak FlutterViewController* owner
   // a framebuffer that will not be able to completely attach.
 }
 
-void PlatformViewIOS::attachView() {
-  FML_DCHECK(owner_controller_);
-  FML_DCHECK(owner_controller_.isViewLoaded) << "FlutterViewController's view should be loaded "
+void PlatformViewIOS::attachView(FlutterViewIdentifier viewIdentifier) {
+  FlutterViewController* owner_controller =
+      [viewControllers_ objectForKey:@(viewIdentifier)];
+  FML_DCHECK(owner_controller);
+  FML_DCHECK(owner_controller.isViewLoaded) << "FlutterViewController's view should be loaded "
                                                 "before attaching to PlatformViewIOS.";
-  FlutterView* flutter_view = static_cast<FlutterView*>(owner_controller_.view);
+  FlutterView* flutter_view = static_cast<FlutterView*>(owner_controller.view);
   CALayer* ca_layer = flutter_view.layer;
   // ios_surface_ = IOSSurface::Create(ios_context_, ca_layer);
   auto ios_surface = IOSSurface::Create(ios_context_, ca_layer);
   FML_DCHECK(ios_surface != nullptr);
-  ios_surfaces_manager_->AddSurface(kFlutterImplicitViewId, std::move(ios_surface));
+  // kFlutterImplicitViewId
+  ios_surfaces_manager_->AddSurface( viewIdentifier, std::move(ios_surface));
 
-  if (accessibility_bridge_) {
-    accessibility_bridge_.Set(std::make_unique<AccessibilityBridge>(
-        owner_controller_, this, owner_controller_.platformViewsController));
+  // TODO: Make `AccessibilityBridge` support multi-view.
+  if (viewIdentifier == kFlutterImplicitViewId) {
+    if (accessibility_bridge_) {
+        accessibility_bridge_.Set(std::make_unique<AccessibilityBridge>(
+            owner_controller, this, platform_views_controller_));
+    }
   }
 }
 
@@ -216,7 +235,7 @@ void PlatformViewIOS::SetSemanticsEnabled(bool enabled) {
   }
   if (enabled && !accessibility_bridge_) {
     accessibility_bridge_.Set(std::make_unique<AccessibilityBridge>(
-        owner_controller_, this, owner_controller_.platformViewsController));
+        owner_controller_, this, platformViewsController_));
   } else if (!enabled && accessibility_bridge_) {
     accessibility_bridge_.Clear();
   } else {
@@ -291,6 +310,10 @@ std::unique_ptr<std::vector<std::string>> PlatformViewIOS::ComputePlatformResolv
   }
   return out;
 }
+
+  void PlatformViewIOS::NotifyCreated(int64_t view_id) {}
+
+  void PlatformViewIOS::NotifyDestroyed(int64_t view_id) {}
 
 PlatformViewIOS::ScopedObserver::ScopedObserver() {}
 

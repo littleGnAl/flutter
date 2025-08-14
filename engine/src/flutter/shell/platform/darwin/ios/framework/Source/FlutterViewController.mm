@@ -164,6 +164,9 @@ typedef struct MouseState {
   MouseState _mouseState;
 }
 
+// Synthesize properties declared readonly.
+@synthesize viewIdentifier = _viewIdentifier;
+
 // Synthesize properties with an overridden getter/setter.
 @synthesize viewOpaque = _viewOpaque;
 @synthesize displayingFlutterUI = _displayingFlutterUI;
@@ -171,7 +174,7 @@ typedef struct MouseState {
 // TODO(dkwingsmt): https://github.com/flutter/flutter/issues/138168
 // No backing ivar is currently required; when multiple views are supported, we'll need to
 // synthesize the ivar and store the view identifier.
-@dynamic viewIdentifier;
+// @dynamic viewIdentifier;
 
 #pragma mark - Manage and override all designated initializers
 
@@ -202,7 +205,9 @@ typedef struct MouseState {
     // TODO(cbracken): https://github.com/flutter/flutter/issues/157140
     // Eliminate method calls in initializers and dealloc.
     [self performCommonViewControllerInitialization];
-    [engine setViewController:self];
+    // [engine setViewController:self];
+
+    _viewIdentifier = [engine addViewController:self];
   }
 
   return self;
@@ -673,7 +678,7 @@ static void SendFakeTouchEvent(UIScreen* screen,
 - (int64_t)viewIdentifier {
   // TODO(dkwingsmt): Fill the view ID property with the correct value once the
   // iOS shell supports multiple views.
-  return flutter::kFlutterImplicitViewId;
+  return _viewIdentifier;
 }
 
 - (BOOL)loadDefaultSplashScreenView {

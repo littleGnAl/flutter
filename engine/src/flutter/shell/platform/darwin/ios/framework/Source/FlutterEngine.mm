@@ -376,14 +376,20 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
   if (!self.platformView) {
     return;
   }
-  self.platformView->NotifyCreated();
+
+  if ([_viewControllers count] == 0 && !_allowHeadlessExecution) {
+    self.platformView->NotifyCreated();
+  }
 }
 
 - (void)notifyViewDestroyed {
   if (!self.platformView) {
     return;
   }
-  self.platformView->NotifyDestroyed();
+
+  if ([_viewControllers count] == 0 && !_allowHeadlessExecution) {
+    self.platformView->NotifyDestroyed();
+  }
 }
 
 - (flutter::PlatformViewIOS*)platformView {

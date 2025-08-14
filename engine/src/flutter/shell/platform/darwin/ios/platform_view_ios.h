@@ -101,7 +101,7 @@ class PlatformViewIOS final : public PlatformView {
    * Can be used to perform late initialization after `FlutterViewController`'s
    * init.
    */
-  void attachView();
+  void attachView(FlutterViewIdentifier viewIdentifier);
 
   /**
    * Called through when an external texture such as video or camera is
@@ -156,6 +156,10 @@ class PlatformViewIOS final : public PlatformView {
     return platform_message_handler_;
   }
 
+  void NotifyCreated(int64_t view_id);
+
+  void NotifyDestroyed(int64_t view_id);
+
  private:
   /// Smart pointer for use with objective-c observers.
   /// This guarantees we remove the observer.
@@ -189,6 +193,8 @@ class PlatformViewIOS final : public PlatformView {
     std::function<void(bool)> set_semantics_enabled_;
   };
 
+    // It can't use NSDictionary, because the values need to be weak references.
+  NSMapTable* viewControllers_;
   __weak FlutterViewController* owner_controller_;
   // Since the `ios_surface_` is created on the platform thread but
   // used on the raster thread we need to protect it with a mutex.

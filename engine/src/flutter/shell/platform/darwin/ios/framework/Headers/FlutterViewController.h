@@ -198,6 +198,17 @@ FLUTTER_DARWIN_EXPORT
 + (BOOL)isUIAccessibilityIsVoiceOverRunning;
 
 /**
+ * The identifier for this view controller, if it is attached.
+ *
+ * The identifier is assigned when the view controller is attached to a
+ * `FlutterEngine`.
+ *
+ * If the view controller is detached (see `FlutterViewController#attached`),
+ * reading this property throws an assertion.
+ */
+@property(nonatomic, readonly) FlutterViewIdentifier viewIdentifier;
+
+/**
  * True if at least one frame has rendered and the ViewController has appeared.
  *
  * This property is reset to false when the ViewController disappears. It is
