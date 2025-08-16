@@ -819,10 +819,15 @@ static void SendFakeTouchEvent(UIScreen* screen,
 
   if (self.engine && self.engineNeedsLaunch) {
     [self.engine launchEngine:nil libraryURI:nil entrypointArgs:nil];
-    [self.engine setViewController:self];
+    // [self.engine setViewController:self];
+    _viewIdentifier = [self.engine addViewController:self];
     self.engineNeedsLaunch = NO;
-  } else if (self.engine.viewController == self) {
-    [self.engine attachView];
+  }
+  // else if (self.engine.viewController == self) {
+  //   [self.engine attachView:viewIdentifier];
+  // }
+  else {
+    [self.engine attachView:viewIdentifier];
   }
 
   // Register internal plugins.

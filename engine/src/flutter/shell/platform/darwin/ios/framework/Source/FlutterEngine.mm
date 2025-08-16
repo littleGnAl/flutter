@@ -377,7 +377,7 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
     return;
   }
 
-  if ([_viewControllers count] == 0 && !_allowHeadlessExecution) {
+  if ([_viewControllers count] == 1 && !_allowHeadlessExecution) {
     self.platformView->NotifyCreated();
   }
 }
@@ -387,7 +387,7 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
     return;
   }
 
-  if ([_viewControllers count] == 0 && !_allowHeadlessExecution) {
+  if ([_viewControllers count] == 1 && !_allowHeadlessExecution) {
     self.platformView->NotifyDestroyed();
   }
 }
@@ -636,9 +636,12 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
   // [self shutDownIfNeeded];
 }
 
-- (void)attachView {
+- (void)attachView:(FlutterViewIdentifier)viewIdentifier {
   FML_DCHECK(self.platformView);
-  self.platformView->attachView();
+  if ([_viewControllers objectForKey:@(viewIdentifier)] == nil) {
+    return;
+  }
+  self.platformView->attachView(viewIdentifier);
 }
 
 - (void)setFlutterViewControllerWillDeallocObserver:(id<NSObject>)observer {

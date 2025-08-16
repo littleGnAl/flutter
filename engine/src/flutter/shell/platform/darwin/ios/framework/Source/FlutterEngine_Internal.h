@@ -55,7 +55,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)createShell:(nullable NSString*)entrypoint
          libraryURI:(nullable NSString*)libraryOrNil
        initialRoute:(nullable NSString*)initialRoute;
-- (void)attachView;
+- (void)attachView:(FlutterViewIdentifier)viewIdentifier;
 - (void)notifyLowMemory;
 
 /// Blocks until the first frame is presented or the timeout is exceeded, then invokes callback.
