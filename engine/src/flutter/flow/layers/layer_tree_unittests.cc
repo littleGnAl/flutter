@@ -27,7 +27,7 @@ class LayerTreeTest : public CanvasTest {
             compositor_context_.AcquireFrame(nullptr,
                                              &builder_,
                                              nullptr,
-                                             ToSkMatrix(root_transform_),
+                                             root_transform_,
                                              false,
                                              true,
                                              nullptr,

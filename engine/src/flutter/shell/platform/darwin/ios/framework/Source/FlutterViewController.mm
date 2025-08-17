@@ -67,7 +67,7 @@ typedef struct MouseState {
 // TODO(dkwingsmt): Make the view ID property public once the iOS shell
 // supports multiple views.
 // https://github.com/flutter/flutter/issues/138168
-@property(nonatomic, readonly) int64_t viewIdentifier;
+// @property(nonatomic, readonly) int64_t viewIdentifier;
 
 // We keep a separate reference to this and create it ahead of time because we want to be able to
 // set up a shell along with its platform view before the view has to appear.
@@ -313,6 +313,10 @@ typedef struct MouseState {
         [FlutterSharedApplication.application.delegate performSelector:@selector(pluginRegistrant)];
     [pluginRegistrant registerWithRegistry:self];
   }
+}
+
+- (void)setupViewIdentifier:(FlutterViewIdentifier)viewIdentifier {
+  _viewIdentifier = viewIdentifier;
 }
 
 - (BOOL)isViewOpaque {
@@ -827,7 +831,7 @@ static void SendFakeTouchEvent(UIScreen* screen,
   //   [self.engine attachView:viewIdentifier];
   // }
   else {
-    [self.engine attachView:viewIdentifier];
+    [self.engine attachView:_viewIdentifier];
   }
 
   // Register internal plugins.
@@ -889,7 +893,7 @@ static void SendFakeTouchEvent(UIScreen* screen,
   if (textInputPlugin != nil) {
     [self.keyboardManager addSecondaryResponder:textInputPlugin];
   }
-  if (self.engine.viewController == self) {
+  if ([self.engine viewControllerForIdentifier:_viewIdentifier] == self) {
     [textInputPlugin setUpIndirectScribbleInteraction:self];
   }
 }
@@ -900,7 +904,8 @@ static void SendFakeTouchEvent(UIScreen* screen,
 
 - (void)viewWillAppear:(BOOL)animated {
   TRACE_EVENT0("flutter", "viewWillAppear");
-  if (self.engine.viewController == self) {
+//  if (self.engine.viewController == self) {
+  if (_viewIdentifier == flutter::kFlutterImplicitViewId) {
     // Send platform settings to Flutter, e.g., platform brightness.
     [self onUserSettingsChanged:nil];
 
@@ -911,6 +916,12 @@ static void SendFakeTouchEvent(UIScreen* screen,
     }
     [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.inactive"];
     [self.engine.restorationPlugin markRestorationComplete];
+  } else {
+    // Only recreate surface on subsequent appearances when viewport metrics are known.
+    // First time surface creation is done on viewDidLayoutSubviews.
+    if (_viewportMetrics.physical_width) {
+      [self surfaceUpdated:YES];
+    }
   }
 
   [super viewWillAppear:animated];
@@ -918,20 +929,24 @@ static void SendFakeTouchEvent(UIScreen* screen,
 
 - (void)viewDidAppear:(BOOL)animated {
   TRACE_EVENT0("flutter", "viewDidAppear");
-  if (self.engine.viewController == self) {
+//  if (self.engine.viewController == self) {
+  if (_viewIdentifier == flutter::kFlutterImplicitViewId) {
     [self onUserSettingsChanged:nil];
     [self onAccessibilityStatusChanged:nil];
 
     if (self.stateIsActive) {
       [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.resumed"];
     }
+  } else {
+    [self onAccessibilityStatusChanged:nil];
   }
   [super viewDidAppear:animated];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
   TRACE_EVENT0("flutter", "viewWillDisappear");
-  if (self.engine.viewController == self) {
+//  if (self.engine.viewController == self) {
+  if (_viewIdentifier == flutter::kFlutterImplicitViewId) {
     [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.inactive"];
   }
   [super viewWillDisappear:animated];
@@ -939,13 +954,19 @@ static void SendFakeTouchEvent(UIScreen* screen,
 
 - (void)viewDidDisappear:(BOOL)animated {
   TRACE_EVENT0("flutter", "viewDidDisappear");
-  if (self.engine.viewController == self) {
+//  if (self.engine.viewController == self) {
+  if (_viewIdentifier == flutter::kFlutterImplicitViewId) {
     [self invalidateKeyboardAnimationVSyncClient];
     [self ensureViewportMetricsIsCorrect];
     [self surfaceUpdated:NO];
     [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.paused"];
     [self flushOngoingTouches];
     [self.engine notifyLowMemory];
+  } else {
+    [self invalidateKeyboardAnimationVSyncClient];
+    [self ensureViewportMetricsIsCorrect];
+    [self surfaceUpdated:NO];
+    [self flushOngoingTouches];
   }
 
   [super viewDidDisappear:animated];
@@ -1409,7 +1430,7 @@ static flutter::PointerData::DeviceKind DeviceKindFromTouchType(UITouch* touch) 
     }
   }
 
-  if (isUserInteracting && self.engine.viewController == self) {
+  if (isUserInteracting && [self.engine viewControllerForIdentifier:_viewIdentifier] == self) {
     [_touchRateCorrectionVSyncClient await];
   } else {
     [_touchRateCorrectionVSyncClient pause];
@@ -1427,9 +1448,10 @@ static flutter::PointerData::DeviceKind DeviceKindFromTouchType(UITouch* touch) 
   if (_shouldIgnoreViewportMetricsUpdatesDuringRotation) {
     return;
   }
-  if (self.engine.viewController == self) {
-    [self.engine updateViewportMetrics:_viewportMetrics];
-  }
+//  if (self.engine.viewController == self) {
+//    [self.engine updateViewportMetrics:_viewportMetrics];
+//  }
+  [self.engine updateViewportMetrics:_viewportMetrics viewIdentifier:_viewIdentifier];
 }
 
 - (void)viewDidLayoutSubviews {
@@ -1624,7 +1646,7 @@ static flutter::PointerData::DeviceKind DeviceKindFromTouchType(UITouch* touch) 
   if (isLocal && ![isLocal boolValue]) {
     return YES;
   }
-  return self.engine.viewController != self;
+  return [self.engine viewControllerForIdentifier:_viewIdentifier] != self;
 }
 
 - (FlutterKeyboardMode)calculateKeyboardAttachMode:(NSNotification*)notification {

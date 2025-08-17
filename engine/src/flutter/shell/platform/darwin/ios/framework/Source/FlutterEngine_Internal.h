@@ -17,7 +17,7 @@
 
 #include "flutter/shell/platform/embedder/embedder.h"
 
-#import "flutter/shell/platform/darwin/ios/framework/Headers/FlutterEngine.h"
+#import "flutter/shell/platform/darwin/ios/framework/Headers/FlutterViewController.h"
 #import "flutter/shell/platform/darwin/ios/framework/Source/FlutterDartProject_Internal.h"
 #import "flutter/shell/platform/darwin/ios/framework/Source/FlutterIndirectScribbleDelegate.h"
 #import "flutter/shell/platform/darwin/ios/framework/Source/FlutterPlatformPlugin.h"
@@ -31,7 +31,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface FlutterEngine () <FlutterViewEngineDelegate>
 
-- (void)updateViewportMetrics:(flutter::ViewportMetrics)viewportMetrics;
+- (void)updateViewportMetrics:(flutter::ViewportMetrics)viewportMetrics viewIdentifier:(FlutterViewIdentifier)viewIdentifier;
 - (void)dispatchPointerDataPacket:(std::unique_ptr<flutter::PointerDataPacket>)packet;
 
 - (fml::RefPtr<fml::TaskRunner>)platformTaskRunner;
@@ -130,6 +130,9 @@ NS_ASSUME_NONNULL_BEGIN
  * assertion.
  */
 - (void)removeViewController:(FlutterViewController*)viewController;
+
+- (nullable FlutterViewController*)viewControllerForIdentifier:
+    (FlutterViewIdentifier)viewIdentifier;
 
 @end
 

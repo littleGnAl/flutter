@@ -37,7 +37,7 @@ class IMPELLER_CA_METAL_LAYER_AVAILABLE GPUSurfaceMetalImpeller
  private:
   const GPUSurfaceMetalDelegate* delegate_;
   const GetGPUSurfaceMetalDelegateCallback get_gpu_surface_metal_delegate_;
-  const MTLRenderTargetType render_target_type_;
+//   const MTLRenderTargetType render_target_type_;
   std::shared_ptr<impeller::AiksContext> aiks_context_;
   id<MTLTexture> last_texture_;
   // TODO(38466): Refactor GPU surface APIs take into account the fact that an
@@ -63,12 +63,15 @@ class IMPELLER_CA_METAL_LAYER_AVAILABLE GPUSurfaceMetalImpeller
   }
 
   std::unique_ptr<SurfaceFrame> AcquireFrameFromCAMetalLayer(
-      int64_t view_id,
+      const GPUSurfaceMetalDelegate* delegate,
       const DlISize& frame_size);
 
   std::unique_ptr<SurfaceFrame> AcquireFrameFromMTLTexture(
-      int64_t view_id,
+      const GPUSurfaceMetalDelegate* delegate,
       const DlISize& frame_size);
+
+  // |Surface|
+  DlMatrix GetRootTransformation() const override;
 
   // |Surface|
   DlMatrix GetRootTransformation(int64_t view_id) const override;

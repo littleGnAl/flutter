@@ -103,15 +103,15 @@ namespace flutter {
       jni_facade_->FlutterViewOnDisplayPlatformView(
           flutter_view_id, ///
           view_id,             //
-          view_rect.x(),       //
-          view_rect.y(),       //
-          view_rect.width(),   //
-          view_rect.height(),  //
-          params.sizePoints().width() * device_pixel_ratio_,
-          params.sizePoints().height() * device_pixel_ratio_,
+          view_rect.GetX(),       //
+          view_rect.GetY(),       //
+          view_rect.GetWidth(),   //
+          view_rect.GetHeight(),  //
+          params.sizePoints().width * device_pixel_ratio_,
+          params.sizePoints().height * device_pixel_ratio_,
           params.mutatorsStack()  //
       );
-      std::unordered_map<int64_t, SkRect>::const_iterator overlay =
+      std::unordered_map<int64_t, DlRect>::const_iterator overlay =
           overlay_layers.find(view_id);
       if (overlay == overlay_layers.end()) {
         continue;
@@ -177,7 +177,7 @@ namespace flutter {
 
   // |ExternalViewEmbedder|
   void AndroidPlatformViewController::PrepareFlutterView(int64_t flutter_view_id,
-                          SkISize frame_size,
+                          DlISize frame_size,
                           double device_pixel_ratio) {
     Reset();
 
@@ -218,16 +218,12 @@ namespace flutter {
 
   // Gets the rect based on the device pixel ratio of a platform view displayed
   // on the screen.
-  SkRect AndroidPlatformViewController::GetViewRect(int64_t view_id) const {
+  DlRect AndroidPlatformViewController::GetViewRect(int64_t view_id) const {
     const EmbeddedViewParams& params = view_params_.at(view_id);
     // TODO(egarciad): The rect should be computed from the mutator stack.
     // (Clipping is missing)
     // https://github.com/flutter/flutter/issues/59821
-    return SkRect::MakeXYWH(params.finalBoundingRect().x(),      //
-                            params.finalBoundingRect().y(),      //
-                            params.finalBoundingRect().width(),  //
-                            params.finalBoundingRect().height()  //
-    );
+    return params.finalBoundingRect();
   }
 
 
@@ -267,7 +263,7 @@ namespace flutter {
                                                       int64_t flutter_view_id,
                                                       int64_t view_id,
                                                       EmbedderViewSlice* slice,
-                                                      const SkRect& rect) {
+                                                      const DlRect& rect) {
     std::shared_ptr<OverlayLayer> layer = surface_pool_->GetLayer(
         context, android_context_, jni_facade_, surface_factory_, flutter_view_id);
 
@@ -277,16 +273,16 @@ namespace flutter {
     // just positioned and sized.
     jni_facade_->FlutterViewDisplayOverlaySurface(flutter_view_id, //
                                                   layer->id,     //
-                                                  rect.x(),      //
-                                                  rect.y(),      //
-                                                  rect.width(),  //
-                                                  rect.height()  //
+                                                  rect.GetX(),      //
+                                                  rect.GetY(),      //
+                                                  rect.GetWidth(),  //
+                                                  rect.GetHeight()  //
     );
     DlCanvas* overlay_canvas = frame->Canvas();
     overlay_canvas->Clear(DlColor::kTransparent());
     // Offset the picture since its absolute position on the scene is determined
     // by the position of the overlay view.
-    overlay_canvas->Translate(-rect.x(), -rect.y());
+    overlay_canvas->Translate(-rect.GetX(), -rect.GetY());
     slice->render_into(overlay_canvas);
     return frame;
   }

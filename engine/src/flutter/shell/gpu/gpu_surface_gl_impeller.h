@@ -48,7 +48,7 @@ class GPUSurfaceGLImpeller final : public Surface {
   // |Surface|
   std::unique_ptr<SurfaceFrame> AcquireFrame(const DlISize& size) override;
 
-   std::unique_ptr<SurfaceFrame> AcquireFrame(int64_t view_id, const SkISize& size) override;
+   std::unique_ptr<SurfaceFrame> AcquireFrame(int64_t view_id, const DlISize& size) override;
 
   // |Surface|
   DlMatrix GetRootTransformation() const override;

@@ -740,7 +740,7 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
   // If the external view embedder has specified an optional root surface, the
   // root surface transformation is set by the embedder instead of
   // having to apply it here.
-  SkMatrix root_surface_transformation =
+  DlMatrix root_surface_transformation =
       embedder_root_canvas ? DlMatrix() : surface_->GetRootTransformation(view_id);
 
   auto root_surface_canvas =

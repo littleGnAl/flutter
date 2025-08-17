@@ -45,7 +45,7 @@ public:
 
     const std::shared_ptr<impeller::Context> impeller_context_;
     std::shared_ptr<impeller::AiksContext> aiks_context_;
-    bool is_valid_ = false;
+    // bool is_valid_ = false;
 
     std::unordered_map<int64_t, std::unique_ptr<IOSSurface>> ios_surfaces_;
 
@@ -156,9 +156,9 @@ class PlatformViewIOS final : public PlatformView {
     return platform_message_handler_;
   }
 
-  void NotifyCreated(int64_t view_id);
+  // void NotifyCreated(int64_t view_id);
 
-  void NotifyDestroyed(int64_t view_id);
+  // void NotifyDestroyed(int64_t view_id);
 
  private:
   /// Smart pointer for use with objective-c observers.
@@ -193,20 +193,20 @@ class PlatformViewIOS final : public PlatformView {
     std::function<void(bool)> set_semantics_enabled_;
   };
 
-    // It can't use NSDictionary, because the values need to be weak references.
-  NSMapTable* viewControllers_;
   __weak FlutterViewController* owner_controller_;
   // Since the `ios_surface_` is created on the platform thread but
   // used on the raster thread we need to protect it with a mutex.
   std::mutex ios_surface_mutex_;
   std::unique_ptr<IOSSurface> ios_surface_;
   std::shared_ptr<IOSContext> ios_context_;
-  std::unique_ptr<IOSSurfacesManager> ios_surfaces_manager_;
   __weak FlutterPlatformViewsController* platform_views_controller_;
   AccessibilityBridgeManager accessibility_bridge_;
   ScopedObserver dealloc_view_controller_observer_;
   std::vector<std::string> platform_resolved_locale_;
   std::shared_ptr<PlatformMessageHandlerIos> platform_message_handler_;
+  std::unique_ptr<IOSSurfacesManager> ios_surfaces_manager_;
+  // It can't use NSDictionary, because the values need to be weak references.
+  NSMapTable* viewControllers_;
 
   FML_DISALLOW_COPY_AND_ASSIGN(PlatformViewIOS);
 };

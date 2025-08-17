@@ -11,9 +11,13 @@
 #include "flutter/fml/synchronization/waitable_event.h"
 #include "flutter/fml/trace_event.h"
 #include "flutter/shell/common/shell_io_manager.h"
+#include "flutter/shell/platform/darwin/ios/ios_surface_metal_impeller.h"
+#include "flutter/shell/gpu/gpu_surface_metal_impeller.h"
+#include "flutter/impeller/renderer/backend/metal/formats_mtl.h"
 #import "flutter/shell/platform/darwin/common/InternalFlutterSwiftCommon/InternalFlutterSwiftCommon.h"
 #import "flutter/shell/platform/darwin/ios/framework/Source/FlutterViewController_Internal.h"
 #import "flutter/shell/platform/darwin/ios/framework/Source/vsync_waiter_ios.h"
+
 
 FLUTTER_ASSERT_ARC
 
@@ -45,16 +49,21 @@ IOSSurface* IOSSurfacesManager::GetSurface(int64_t view_id) const {
 }
 
 std::unique_ptr<Surface> IOSSurfacesManager::CreateGPUSurface() {
-  impeller_context_->UpdateOffscreenLayerPixelFormat(
-      impeller::FromMTLPixelFormat(layer_.pixelFormat));
+  auto iter = ios_surfaces_.find(kFlutterImplicitViewId);
+  if (iter != ios_surfaces_.end()) {
+    auto *ios_surface = static_cast<IOSSurfaceMetalImpeller *>(iter->second.get());
+    impeller_context_->UpdateOffscreenLayerPixelFormat(
+      impeller::FromMTLPixelFormat(ios_surface->GetPixelFormat()));
+  }
+
   IOSSurfacesManager* surfaces_manager_ptr = this;
   return std::make_unique<GPUSurfaceMetalImpeller>(
-             this,          //
+             nullptr,          //
              aiks_context_, //
              true,          //
              [surfaces_manager_ptr](int64_t view_id) {               // get_gpu_surface_delegate
                   auto *surface = surfaces_manager_ptr->GetSurface(view_id);
-                  return static_cast<IOSSurfaceMetalImpeller*>(surface);;
+                  return static_cast<IOSSurfaceMetalImpeller *>(surface);;
               });
 }
 
@@ -135,8 +144,8 @@ void PlatformViewIOS::SetOwnerViewController(__weak FlutterViewController* owner
   // }
   // owner_controller_ = owner_controller;
   FlutterViewIdentifier viewIdentifier = owner_controller.viewIdentifier;
-  NSAssert([viewControllers_ objectForKey:@(viewIdentifier)] == nil,
-           @"The requested view ID is occupied.");
+  // NSAssert([viewControllers_ objectForKey:@(viewIdentifier)] == nil,
+  //          @"The requested view ID is occupied.");
   [viewControllers_ setObject:owner_controller forKey:@(viewIdentifier)];
 
   // Add an observer that will clear out the owner_controller_ ivar and
@@ -235,7 +244,7 @@ void PlatformViewIOS::SetSemanticsEnabled(bool enabled) {
   }
   if (enabled && !accessibility_bridge_) {
     accessibility_bridge_.Set(std::make_unique<AccessibilityBridge>(
-        owner_controller_, this, platformViewsController_));
+        owner_controller_, this, platform_views_controller_));
   } else if (!enabled && accessibility_bridge_) {
     accessibility_bridge_.Clear();
   } else {
@@ -311,9 +320,9 @@ std::unique_ptr<std::vector<std::string>> PlatformViewIOS::ComputePlatformResolv
   return out;
 }
 
-  void PlatformViewIOS::NotifyCreated(int64_t view_id) {}
+  // void PlatformViewIOS::NotifyCreated(int64_t view_id) {}
 
-  void PlatformViewIOS::NotifyDestroyed(int64_t view_id) {}
+  // void PlatformViewIOS::NotifyDestroyed(int64_t view_id) {}
 
 PlatformViewIOS::ScopedObserver::ScopedObserver() {}
 

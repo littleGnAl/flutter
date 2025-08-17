@@ -67,7 +67,7 @@ bool GPUSurfaceGLImpeller::IsValid() {
   return is_valid_;
 }
 
-std::unique_ptr<SurfaceFrame> GPUSurfaceGLImpeller::AcquireFrame(int64_t view_id, const SkISize& size) {
+std::unique_ptr<SurfaceFrame> GPUSurfaceGLImpeller::AcquireFrame(int64_t view_id, const DlISize& size) {
   // FML_LOG(ERROR) << "GPUSurfaceGLImpeller::AcquireFrame view_id: " << view_id;
     if (!IsValid()) {
     FML_LOG(ERROR) << "OpenGL surface was invalid.";
@@ -122,15 +122,15 @@ delegate =delegate_;
         [](const SurfaceFrame& surface_frame) { return true; }, size);
   }
 
-  GLFrameInfo frame_info = {static_cast<uint32_t>(size.width()),
-                            static_cast<uint32_t>(size.height())};
+  GLFrameInfo frame_info = {static_cast<uint32_t>(size.width),
+                            static_cast<uint32_t>(size.height)};
   const GLFBOInfo fbo_info = delegate->GLContextFBO(frame_info);
   auto surface = impeller::SurfaceGLES::WrapFBO(
       impeller_context_,                            // context
       swap_callback,                                // swap_callback
       fbo_info.fbo_id,                              // fbo
       impeller::PixelFormat::kR8G8B8A8UNormInt,     // color_format
-      impeller::ISize{size.width(), size.height()}  // fbo_size
+      impeller::ISize{size.width, size.height}  // fbo_size
   );
 
   impeller::RenderTarget render_target = surface->GetRenderTarget();

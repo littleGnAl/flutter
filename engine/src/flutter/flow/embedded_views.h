@@ -400,7 +400,7 @@ class ExternalViewEmbedder {
   // Prepare for a view to be drawn.
   virtual void PrepareFlutterView(
                           int64_t flutter_view_id,
-                          SkISize frame_size,
+                          DlISize frame_size,
                           double device_pixel_ratio) = 0;
 
   // Submits the content stored since |PrepareFlutterView| to the specified

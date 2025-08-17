@@ -181,6 +181,10 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
 
   // It can't use NSDictionary, because the values need to be weak references.
   NSMapTable* _viewControllers;
+
+    // View identifier for the next view to be created.
+  // Only used when multiview is enabled.
+  FlutterViewIdentifier _nextViewIdentifier;
 }
 
 - (int64_t)engineIdentifier {
@@ -221,6 +225,7 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
   _labelPrefix = [labelPrefix copy];
   _dartProject = project ?: [[FlutterDartProject alloc] init];
   _viewControllers = [NSMapTable weakToWeakObjectsMapTable];
+  _nextViewIdentifier = flutter::kFlutterImplicitViewId;
 
   _enableEmbedderAPI = _dartProject.settings.enable_embedder_api;
   if (_enableEmbedderAPI) {
@@ -331,11 +336,14 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
   return *_shell;
 }
 
-- (void)updateViewportMetrics:(flutter::ViewportMetrics)viewportMetrics {
+- (void)updateViewportMetrics:(flutter::ViewportMetrics)viewportMetrics viewIdentifier:(FlutterViewIdentifier)viewIdentifier {
   if (!self.platformView) {
     return;
   }
-  self.platformView->SetViewportMetrics(flutter::kFlutterImplicitViewId, viewportMetrics);
+  if ([_viewControllers objectForKey:@(viewIdentifier)] == nil) {
+    return;
+  }
+  self.platformView->SetViewportMetrics(viewIdentifier, viewportMetrics);
 }
 
 - (void)dispatchPointerDataPacket:(std::unique_ptr<flutter::PointerDataPacket>)packet {
@@ -476,8 +484,9 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
 
 - (void)setViewController:(FlutterViewController*)viewController {
   FML_DCHECK(self.platformView);
-  _viewController = viewController;
-  self.platformView->SetOwnerViewController(_viewController);
+  // _viewController = viewController;
+  // self.platformView->SetOwnerViewController(_viewController);
+  self.platformView->SetOwnerViewController(viewController);
   [self maybeSetupPlatformViewChannels];
   [self updateDisplays];
   self.textInputPlugin.viewController = viewController;
@@ -511,7 +520,8 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
            @"The requested view ID is occupied.");
   [_viewControllers setObject:controller forKey:@(viewIdentifier)];
   // [controller setUpWithEngine:self viewIdentifier:viewIdentifier];
-  // NSAssert(controller.viewIdentifier == viewIdentifier, @"Failed to assign view ID.");
+  [controller setupViewIdentifier:viewIdentifier];
+   NSAssert(controller.viewIdentifier == viewIdentifier, @"Failed to assign view ID.");
   // // Verify that the controller's property are updated accordingly. Failing the
   // // assertions is likely because either the FlutterViewController or the
   // // FlutterEngine is mocked. Please subclass these classes instead.
@@ -525,7 +535,10 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
   //   [self viewControllerViewDidLoad:controller];
   // }
 
-   if (viewIdentifier != kFlutterImplicitViewId) {
+  if (viewIdentifier == flutter::kFlutterImplicitViewId) {
+    [self setViewController:controller];
+  } else {
+    self.platformView->SetOwnerViewController(controller);
      // These will be overriden immediately after the FlutterView is created
      // by actual values.
     //  FlutterWindowMetricsEvent metrics{
@@ -534,7 +547,7 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
     //      .height = 0,
     //      .pixel_ratio = 1.0,
     //  };
-     ViewportMetrics metrics = {};
+     flutter::ViewportMetrics metrics = {};
      bool added = false;
 //     FlutterAddViewInfo info{.struct_size = sizeof(FlutterAddViewInfo),
 //                             .view_id = viewIdentifier,
@@ -547,7 +560,7 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
 //     void AddView(int64_t view_id,
 //                  const ViewportMetrics& viewport_metrics,
 //                  AddViewCallback callback);
-     self.platformView->AddView(viewIdentifier, metrics, [&added] (result){
+     self.platformView->AddView(viewIdentifier, metrics, [&added] (bool result){
        added = result;
      });
      // The callback should be called synchronously from platform thread.
@@ -560,7 +573,10 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
 }
 
 - (void)deregisterViewControllerForIdentifier:(FlutterViewIdentifier)viewIdentifier {
-   if (viewIdentifier != kFlutterImplicitViewId) {
+  if (viewIdentifier == flutter::kFlutterImplicitViewId) {
+    self.flutterViewControllerWillDeallocObserver = nil;
+    [self notifyLowMemory];
+  } else {
      bool removed = false;
     //  FlutterRemoveViewInfo info;
     //  info.struct_size = sizeof(FlutterRemoveViewInfo);
@@ -634,6 +650,13 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
 - (void)removeViewController:(nonnull FlutterViewController*)viewController {
   // [self deregisterViewControllerForIdentifier:viewController.viewIdentifier];
   // [self shutDownIfNeeded];
+}
+
+- (FlutterViewController*)viewControllerForIdentifier:(FlutterViewIdentifier)viewIdentifier {
+  FlutterViewController* controller = [_viewControllers objectForKey:@(viewIdentifier)];
+  NSAssert(controller == nil || controller.viewIdentifier == viewIdentifier,
+           @"The stored controller has unexpected view ID.");
+  return controller;
 }
 
 - (void)attachView:(FlutterViewIdentifier)viewIdentifier {
