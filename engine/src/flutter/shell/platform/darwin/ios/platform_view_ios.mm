@@ -32,14 +32,20 @@ IOSSurfacesManager::IOSSurfacesManager(const std::shared_ptr<IOSContext>& contex
 }
 
 void IOSSurfacesManager::AddSurface(int64_t view_id, std::unique_ptr<IOSSurface> surface) {
+//  std::lock_guard<std::mutex> guard(ios_surface_mutex_);
+  std::unique_lock<std::shared_mutex> lock(ios_surface_mutex_);
   ios_surfaces_.emplace(view_id, std::move(surface));
 }
 
 void IOSSurfacesManager::RemoveSurface(int64_t view_id) {
+//  std::lock_guard<std::mutex> guard(ios_surface_mutex_);
+  std::unique_lock<std::shared_mutex> lock(ios_surface_mutex_);
   ios_surfaces_.erase(view_id);
 }
 
 IOSSurface* IOSSurfacesManager::GetSurface(int64_t view_id) const {
+//  std::lock_guard<std::mutex> guard(ios_surface_mutex_);
+  std::shared_lock<std::shared_mutex> lock(ios_surface_mutex_);
   auto iter = ios_surfaces_.find(view_id);
   if (iter != ios_surfaces_.end()) {
       return iter->second.get();

@@ -48,6 +48,10 @@ public:
     // bool is_valid_ = false;
 
     std::unordered_map<int64_t, std::unique_ptr<IOSSurface>> ios_surfaces_;
+  
+    // Since the `ios_surface_` is created on the platform thread but
+    // used on the raster thread we need to protect it with a mutex.
+    mutable std::shared_mutex ios_surface_mutex_;
 
     FML_DISALLOW_COPY_AND_ASSIGN(IOSSurfacesManager);
 };
