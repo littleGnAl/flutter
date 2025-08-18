@@ -174,6 +174,72 @@ void PlatformViewIOS::SetOwnerViewController(__weak FlutterViewController* owner
   // a framebuffer that will not be able to completely attach.
 }
 
+void PlatformViewIOS::AddOwnerViewController(__weak FlutterViewController* owner_controller) {
+  FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+
+  std::lock_guard<std::mutex> guard(ios_surface_mutex_);
+  // if (ios_surface_ || !owner_controller) {
+  //   NotifyDestroyed();
+  //   ios_surface_.reset();
+  //   accessibility_bridge_.Clear();
+  // }
+  // owner_controller_ = owner_controller;
+  FlutterViewIdentifier viewIdentifier = owner_controller.viewIdentifier;
+  FML_DCHECK([viewControllers_ objectForKey:@(viewIdentifier)] == nil);
+//   NSAssert([viewControllers_ objectForKey:@(viewIdentifier)] == nil,
+//            @"The requested view ID is occupied.");
+  [viewControllers_ setObject:owner_controller forKey:@(viewIdentifier)];
+
+  if (owner_controller.viewIdentifier == kFlutterImplicitViewId) {
+    // Add an observer that will clear out the owner_controller_ ivar and
+    // the accessibility_bridge_ in case the view controller is deleted.
+    dealloc_view_controller_observer_.reset([[NSNotificationCenter defaultCenter]
+        addObserverForName:FlutterViewControllerWillDealloc
+                    object:owner_controller
+                     queue:[NSOperationQueue mainQueue]
+                usingBlock:^(NSNotification* note) {
+                  // Implicit copy of 'this' is fine.
+                  FlutterViewController* owner_controller =
+                    (FlutterViewController*)note.object;
+                  if (owner_controller.viewIdentifier == kFlutterImplicitViewId) {
+                    accessibility_bridge_.Clear();
+                  }
+
+                  // owner_controller_ = nil;
+                }]);
+  }
+
+  if (owner_controller && owner_controller.isViewLoaded) {
+    this->attachView(viewIdentifier);
+  }
+  // Do not call `NotifyCreated()` here - let FlutterViewController take care
+  // of that when its Viewport is sized.  If `NotifyCreated()` is called here,
+  // it can occasionally get invoked before the viewport is sized resulting in
+  // a framebuffer that will not be able to completely attach.
+}
+
+void PlatformViewIOS::RemoveOwnerViewController(FlutterViewIdentifier viewIdentifier) {
+  FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+  
+  std::lock_guard<std::mutex> guard(ios_surface_mutex_);
+//  FlutterViewController* owner_controller = [viewControllers_ objectForKey:@(viewIdentifier)];
+//  FML_DCHECK(owner_controller);
+  
+  if (viewIdentifier == kFlutterImplicitViewId) {
+    NotifyDestroyed();
+    accessibility_bridge_.Clear();
+  }
+  
+  [viewControllers_ removeObjectForKey:@(viewIdentifier)];
+  ios_surfaces_manager_->RemoveSurface(viewIdentifier);
+  
+//   if (ios_surfaces_manager_ || !owner_controller) {
+//     NotifyDestroyed();
+//     ios_surface_.reset();
+//     accessibility_bridge_.Clear();
+//   }
+}
+
 void PlatformViewIOS::attachView(FlutterViewIdentifier viewIdentifier) {
   FlutterViewController* owner_controller =
       [viewControllers_ objectForKey:@(viewIdentifier)];

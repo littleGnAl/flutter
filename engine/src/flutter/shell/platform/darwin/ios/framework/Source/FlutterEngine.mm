@@ -117,6 +117,7 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
 @property(nonatomic, readwrite, copy) NSString* isolateId;
 @property(nonatomic, copy) NSString* initialRoute;
 @property(nonatomic, strong) id<NSObject> flutterViewControllerWillDeallocObserver;
+@property(nonatomic, strong) NSMutableDictionary<NSNumber *, id<NSObject>>* flutterViewControllerWillDeallocObservers;
 @property(nonatomic, strong) FlutterDartVMServicePublisher* publisher;
 @property(nonatomic, strong) FlutterConnectionCollection* connections;
 @property(nonatomic, assign) int64_t nextTextureId;
@@ -249,6 +250,7 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
   _binaryMessenger = [[FlutterBinaryMessengerRelay alloc] initWithParent:self];
   _textureRegistry = [[FlutterTextureRegistryRelay alloc] initWithParent:self];
   _connections = [[FlutterConnectionCollection alloc] init];
+  _flutterViewControllerWillDeallocObservers = [[NSMutableDictionary alloc] init];
 
   NSNotificationCenter* center = [NSNotificationCenter defaultCenter];
   [center addObserver:self
@@ -325,9 +327,15 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
   _textureRegistry.parent = nil;
 
   NSNotificationCenter* center = [NSNotificationCenter defaultCenter];
-  if (_flutterViewControllerWillDeallocObserver) {
-    [center removeObserver:_flutterViewControllerWillDeallocObserver];
+//  if ([self.flutterViewControllerWillDeallocObservers count] > 0) {
+//    [center removeObserver:_flutterViewControllerWillDeallocObserver];
+//  }
+  if ([self.flutterViewControllerWillDeallocObservers count] > 0) {
+    [self.flutterViewControllerWillDeallocObservers enumerateKeysAndObjectsUsingBlock:^(NSNumber *key, id<NSObject> observer, BOOL *stop) {
+      [center removeObserver:observer];
+    }];
   }
+  
   [center removeObserver:self];
 }
 
@@ -486,24 +494,25 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
   FML_DCHECK(self.platformView);
   // _viewController = viewController;
   // self.platformView->SetOwnerViewController(_viewController);
-  self.platformView->SetOwnerViewController(viewController);
+//  self.platformView->SetOwnerViewController(viewController);
+  self.platformView->AddOwnerViewController(viewController);
   [self maybeSetupPlatformViewChannels];
   [self updateDisplays];
   self.textInputPlugin.viewController = viewController;
 
-  if (viewController) {
-    __weak __block FlutterEngine* weakSelf = self;
-    self.flutterViewControllerWillDeallocObserver =
-        [[NSNotificationCenter defaultCenter] addObserverForName:FlutterViewControllerWillDealloc
-                                                          object:viewController
-                                                           queue:[NSOperationQueue mainQueue]
-                                                      usingBlock:^(NSNotification* note) {
-                                                        [weakSelf notifyViewControllerDeallocated];
-                                                      }];
-  } else {
-    self.flutterViewControllerWillDeallocObserver = nil;
-    [self notifyLowMemory];
-  }
+//  if (viewController) {
+//    __weak __block FlutterEngine* weakSelf = self;
+//    self.flutterViewControllerWillDeallocObserver =
+//        [[NSNotificationCenter defaultCenter] addObserverForName:FlutterViewControllerWillDealloc
+//                                                          object:viewController
+//                                                           queue:[NSOperationQueue mainQueue]
+//                                                      usingBlock:^(NSNotification* note) {
+//                                                        [weakSelf notifyViewControllerDeallocated];
+//                                                      }];
+//  } else {
+//    self.flutterViewControllerWillDeallocObserver = nil;
+//    [self notifyLowMemory];
+//  }
 }
 
 - (void)registerViewController:(FlutterViewController*)controller
@@ -534,11 +543,37 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
   // if (controller.viewLoaded) {
   //   [self viewControllerViewDidLoad:controller];
   // }
+  
+  __weak __block FlutterEngine* weakSelf = self;
+  id <NSObject> observer =
+      [[NSNotificationCenter defaultCenter] addObserverForName:FlutterViewControllerWillDealloc
+                                                        object:controller
+                                                         queue:[NSOperationQueue mainQueue]
+                                                    usingBlock:^(NSNotification* note) {
+                                                      [weakSelf notifyViewControllerDeallocated:viewIdentifier];
+                                                    }];
+  [self.flutterViewControllerWillDeallocObservers setObject:observer forKey:@(viewIdentifier)];
+  
+//  if (viewController) {
+//    __weak __block FlutterEngine* weakSelf = self;
+//    (id <NSObject>) observer =
+//        [[NSNotificationCenter defaultCenter] addObserverForName:FlutterViewControllerWillDealloc
+//                                                          object:viewController
+//                                                           queue:[NSOperationQueue mainQueue]
+//                                                      usingBlock:^(NSNotification* note) {
+//                                                        [weakSelf notifyViewControllerDeallocated];
+//                                                      }];
+//  }
+//  else {
+//    self.flutterViewControllerWillDeallocObserver = nil;
+//    [self notifyLowMemory];
+//  }
 
   if (viewIdentifier == flutter::kFlutterImplicitViewId) {
     [self setViewController:controller];
   } else {
-    self.platformView->SetOwnerViewController(controller);
+//    self.platformView->SetOwnerViewController(controller);
+    self.platformView->AddOwnerViewController(controller);
      // These will be overriden immediately after the FlutterView is created
      // by actual values.
     //  FlutterWindowMetricsEvent metrics{
@@ -573,8 +608,12 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
 }
 
 - (void)deregisterViewControllerForIdentifier:(FlutterViewIdentifier)viewIdentifier {
+  id<NSObject> observer = [self.flutterViewControllerWillDeallocObservers objectForKey:@(viewIdentifier)];
+  [[NSNotificationCenter defaultCenter] removeObserver:observer];
+  [self.flutterViewControllerWillDeallocObservers removeObjectForKey:@(viewIdentifier)];
+  
   if (viewIdentifier == flutter::kFlutterImplicitViewId) {
-    self.flutterViewControllerWillDeallocObserver = nil;
+//    self.flutterViewControllerWillDeallocObserver = nil;
     [self notifyLowMemory];
   } else {
      bool removed = false;
@@ -607,6 +646,8 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
                     beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
      }
    }
+  
+  self.platformView->RemoveOwnerViewController(viewIdentifier);
 
   // _macOSCompositor->RemoveView(viewIdentifier);
 
@@ -647,9 +688,18 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
 //  return kFlutterImplicitViewId;
 }
 
-- (void)removeViewController:(nonnull FlutterViewController*)viewController {
-  // [self deregisterViewControllerForIdentifier:viewController.viewIdentifier];
+- (void)removeViewController:(FlutterViewIdentifier)viewIdentifier {
+//   [self deregisterViewControllerForIdentifier:viewController.viewIdentifier];
   // [self shutDownIfNeeded];
+  
+  if ([_viewControllers count] == 1 && !_allowHeadlessExecution) {
+//  if (!self.allowHeadlessExecution) {
+    [self destroyContext];
+  } else if (self.platformView) {
+    [self deregisterViewControllerForIdentifier:viewIdentifier];
+//    self.platformView->SetOwnerViewController({});
+//    self.platformView->RemoveOwnerViewController(viewIdentifier);
+  }
 }
 
 - (FlutterViewController*)viewControllerForIdentifier:(FlutterViewIdentifier)viewIdentifier {
@@ -677,14 +727,21 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
   }
 }
 
-- (void)notifyViewControllerDeallocated {
-  [self.lifecycleChannel sendMessage:@"AppLifecycleState.detached"];
-  self.textInputPlugin.viewController = nil;
-  if (!self.allowHeadlessExecution) {
-    [self destroyContext];
-  } else if (self.platformView) {
-    self.platformView->SetOwnerViewController({});
+- (void)notifyViewControllerDeallocated:(FlutterViewIdentifier)viewIdentifier {
+  if (viewIdentifier == flutter::kFlutterImplicitViewId) {
+    [self.lifecycleChannel sendMessage:@"AppLifecycleState.detached"];
   }
+
+  self.textInputPlugin.viewController = nil;
+//  if ([_viewControllers count] == 1 && !_allowHeadlessExecution) {
+////  if (!self.allowHeadlessExecution) {
+//    [self destroyContext];
+//  } else if (self.platformView) {
+//    [self deregisterViewControllerForIdentifier:viewIdentifier];
+////    self.platformView->SetOwnerViewController({});
+//    self.platformView->RemoveOwnerViewController(viewIdentifier);
+//  }
+  [self removeViewController:viewIdentifier];
   [self.textInputPlugin resetViewResponder];
   _viewController = nil;
 }

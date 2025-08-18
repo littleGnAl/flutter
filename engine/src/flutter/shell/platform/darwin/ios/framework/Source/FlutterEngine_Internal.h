@@ -129,7 +129,7 @@ NS_ASSUME_NONNULL_BEGIN
  * If the view controller is not associated with this engine, this call throws an
  * assertion.
  */
-- (void)removeViewController:(FlutterViewController*)viewController;
+- (void)removeViewController:(FlutterViewIdentifier)viewIdentifier;
 
 - (nullable FlutterViewController*)viewControllerForIdentifier:
     (FlutterViewIdentifier)viewIdentifier;

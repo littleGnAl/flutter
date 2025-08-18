@@ -93,6 +93,10 @@ class PlatformViewIOS final : public PlatformView {
    * is given a new `FlutterViewController`.
    */
   void SetOwnerViewController(__weak FlutterViewController* owner_controller);
+  
+  void AddOwnerViewController(__weak FlutterViewController* owner_controller);
+  
+  void RemoveOwnerViewController(FlutterViewIdentifier viewIdentifier);
 
   /**
    * Called one time per `FlutterViewController` when the `FlutterViewController`'s

@@ -20,7 +20,8 @@ using flutter::DlMatrix;
 using flutter::DlRect;
 using flutter::DlRoundRect;
 
-static constexpr NSUInteger kFlutterClippingMaskViewPoolCapacity = 5;
+//static constexpr NSUInteger kFlutterClippingMaskViewPoolCapacity = 5;
+static constexpr NSUInteger kFlutterClippingMaskViewPoolCapacity = 100;
 
 struct LayerData {
   DlRect rect;
