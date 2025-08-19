@@ -20,8 +20,7 @@ using flutter::DlMatrix;
 using flutter::DlRect;
 using flutter::DlRoundRect;
 
-//static constexpr NSUInteger kFlutterClippingMaskViewPoolCapacity = 5;
-static constexpr NSUInteger kFlutterClippingMaskViewPoolCapacity = 100;
+static constexpr NSUInteger kFlutterClippingMaskViewPoolCapacity = 5;
 
 struct LayerData {
   DlRect rect;
@@ -145,6 +144,9 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 /// Only accessed from the platform thread.
 @property(nonatomic, readonly) std::vector<int64_t>& previousCompositionOrder;
 
+/// This state is only modified on the raster thread.
+@property(nonatomic, readonly) std::unordered_map<int64_t, int64_t>& platformViewIdToFlutterViewIdMapping;
+
 /// Whether the previous frame had any platform views in active composition order.
 ///
 /// This state is tracked so that the first frame after removing the last platform view
@@ -246,6 +248,7 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   std::vector<int64_t> _visitedPlatformViews;
   std::unordered_set<int64_t> _viewsToRecomposite;
   std::vector<int64_t> _previousCompositionOrder;
+  std::unordered_map<int64_t, int64_t> _platformViewIdToFlutterViewIdMapping;
 }
 
 - (id)init {
@@ -1000,6 +1003,11 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 
 - (std::vector<int64_t>&)previousCompositionOrder {
   return _previousCompositionOrder;
+}
+
+// platformViewIdToFlutterViewIdMapping
+- (std::unordered_map<int64_t, int64_t>&)platformViewIdToFlutterViewIdMapping {
+  return _platformViewIdToFlutterViewIdMapping;
 }
 
 @end
