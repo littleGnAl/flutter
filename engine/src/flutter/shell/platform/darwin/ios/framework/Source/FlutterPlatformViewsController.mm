@@ -442,6 +442,8 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   self.slices.insert_or_assign(viewId, std::move(view));
 
   self.compositionOrder.push_back(viewId);
+  // TODO: Add flutter_view_id param.
+  self.platformViewIdToFlutterViewIdMapping.emplace(viewId, flutter::kFlutterImplicitViewId);
 
   if (self.currentCompositionParams.count(viewId) == 1 &&
       self.currentCompositionParams[viewId] == *params.get()) {
