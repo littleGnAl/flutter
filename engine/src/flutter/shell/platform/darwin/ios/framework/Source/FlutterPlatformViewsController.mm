@@ -165,6 +165,8 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 /// Defaults to YES, but becomes NO if blurred backdrop filters cannot be applied.
 @property(nonatomic, assign) BOOL canApplyBlurBackdrop;
 
+@property(nonatomic, strong) NSMapTable<NSNumber *, UIView *> *flutterViews;
+
 /// Populate any missing overlay layers.
 ///
 /// This requires posting a task to the platform thread and blocking on its completion.
@@ -260,6 +262,7 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 
 - (id)init {
   if (self = [super init]) {
+    _flutterViews = [NSMapTable strongToWeakObjectsMapTable];
     _layerPool = std::make_unique<flutter::OverlayLayerPool>();
     _maskViewPool =
         [[FlutterClippingMaskViewPool alloc] initWithCapacity:kFlutterClippingMaskViewPoolCapacity];
@@ -1018,6 +1021,14 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 - (void)collectView:(int64_t)flutterViewId {
   self.flutterViewHadPlatformViews.erase(flutterViewId);
   self.flutterViewPreviousCompositionOrder.erase(flutterViewId);
+}
+
+- (void)attachFlutterView:(int64_t)flutterViewId withView:(__weak UIView*)view {
+  [self.flutterViews setObject:view forKey:@(flutterViewId)];
+}
+
+- (void)detachFlutterView:(int64_t)flutterViewId {
+  [self.flutterViews removeObjectForKey:@(flutterViewId)];
 }
 
 #pragma mark - Properties
