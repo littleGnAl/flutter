@@ -76,6 +76,8 @@ class IOSExternalViewEmbedder : public ExternalViewEmbedder {
 
   // |ExternalViewEmbedder|
   void PushVisitedPlatformView(int64_t flutter_view_id, int64_t view_id) override;
+  
+  void CollectView(int64_t view_id) override;
 
   FML_DISALLOW_COPY_AND_ASSIGN(IOSExternalViewEmbedder);
 };

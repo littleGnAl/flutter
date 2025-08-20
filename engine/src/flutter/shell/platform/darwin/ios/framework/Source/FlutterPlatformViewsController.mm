@@ -147,6 +147,10 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 /// This state is only modified on the raster thread.
 @property(nonatomic, readonly) std::unordered_map<int64_t, int64_t>& platformViewIdToFlutterViewIdMapping;
 
+@property(nonatomic, readonly) std::unordered_map<int64_t, std::vector<int64_t>>& flutterViewPreviousCompositionOrder;
+
+@property(nonatomic, readonly) std::unordered_map<int64_t, BOOL>& flutterViewHadPlatformViews;
+
 /// Whether the previous frame had any platform views in active composition order.
 ///
 /// This state is tracked so that the first frame after removing the last platform view
@@ -249,6 +253,9 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   std::unordered_set<int64_t> _viewsToRecomposite;
   std::vector<int64_t> _previousCompositionOrder;
   std::unordered_map<int64_t, int64_t> _platformViewIdToFlutterViewIdMapping;
+  std::unordered_map<int64_t, std::vector<int64_t>> _flutterViewPreviousCompositionOrder;
+  std::unordered_map<int64_t, BOOL> _flutterViewHadPlatformViews;
+//  @property(nonatomic, assign) BOOL hadPlatformViews;
 }
 
 - (id)init {
@@ -257,6 +264,7 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
     _maskViewPool =
         [[FlutterClippingMaskViewPool alloc] initWithCapacity:kFlutterClippingMaskViewPoolCapacity];
     _hadPlatformViews = NO;
+    _flutterViewHadPlatformViews.clear();
     _canApplyBlurBackdrop = YES;
   }
   return self;
@@ -434,7 +442,8 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   }
 }
 
-- (void)prerollCompositeEmbeddedView:(int64_t)viewId
+- (void)prerollCompositeEmbeddedView:(int64_t)flutterViewId
+                      platformViewId:(int64_t)viewId
                           withParams:(std::unique_ptr<flutter::EmbeddedViewParams>)params {
   DlRect viewBounds = DlRect::MakeSize(self.frameSize);
   std::unique_ptr<flutter::EmbedderViewSlice> view;
@@ -442,8 +451,7 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   self.slices.insert_or_assign(viewId, std::move(view));
 
   self.compositionOrder.push_back(viewId);
-  // TODO: Add flutter_view_id param.
-  self.platformViewIdToFlutterViewIdMapping.emplace(viewId, flutter::kFlutterImplicitViewId);
+  self.platformViewIdToFlutterViewIdMapping.emplace(viewId, flutterViewId);
 
   if (self.currentCompositionParams.count(viewId) == 1 &&
       self.currentCompositionParams[viewId] == *params.get()) {
@@ -665,34 +673,67 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   self.viewsToRecomposite.clear();
   self.layerPool->RecycleLayers();
   self.visitedPlatformViews.clear();
+  self.platformViewIdToFlutterViewIdMapping.clear();
 }
 
-- (BOOL)submitFrame:(std::unique_ptr<flutter::SurfaceFrame>)background_frame
+- (BOOL)submitFrame:(int64_t)flutter_view_id
+              frame:(std::unique_ptr<flutter::SurfaceFrame>)background_frame
      withIosContext:(const std::shared_ptr<flutter::IOSContext>&)iosContext {
   TRACE_EVENT0("flutter", "PlatformViewsController::SubmitFrame");
-
-  // No platform views to render; we're done.
-  if (self.flutterView == nil || (self.compositionOrder.empty() && !self.hadPlatformViews)) {
-    self.hadPlatformViews = NO;
+  
+  
+  std::vector<int64_t> currentFrameCompositionOrder;
+  for (int64_t viewId : self.compositionOrder) {
+    if (self.platformViewIdToFlutterViewIdMapping[viewId] == flutter_view_id) {
+      currentFrameCompositionOrder.push_back(viewId);
+    }
+  }
+  
+  BOOL hadPlatformViews = NO;
+  auto it = self.flutterViewHadPlatformViews.find(flutter_view_id);
+  if (it != self.flutterViewHadPlatformViews.end()) {
+    hadPlatformViews = it->second;
+  }
+  
+//  if (self.flutterView == nil || (self.currentFrameCompositionOrder.empty() && !self.hadPlatformViews)) {
+  if (self.flutterView == nil || (self.currentFrameCompositionOrder.empty() && !hadPlatformViews)) {
+//    self.hadPlatformViews = NO;
+    self.flutterViewHadPlatformViews[flutter_view_id] = NO;
     return background_frame->Submit();
   }
-  self.hadPlatformViews = !self.compositionOrder.empty();
+//  self.hadPlatformViews = !self.compositionOrder.empty();
+  self.flutterViewHadPlatformViews[flutter_view_id] = !currentFrameCompositionOrder.empty();
+  
+
+  // No platform views to render; we're done.
+//  if (self.flutterView == nil || (self.compositionOrder.empty() && !self.hadPlatformViews)) {
+//    self.hadPlatformViews = NO;
+//    return background_frame->Submit();
+//  }
+//  self.hadPlatformViews = !self.compositionOrder.empty();
 
   bool didEncode = true;
   LayersMap platformViewLayers;
   std::vector<std::unique_ptr<flutter::SurfaceFrame>> surfaceFrames;
-  surfaceFrames.reserve(self.compositionOrder.size());
+//  surfaceFrames.reserve(self.compositionOrder.size());
+  surfaceFrames.reserve(currentFrameCompositionOrder.size());
   std::unordered_map<int64_t, DlRect> viewRects;
 
-  for (int64_t viewId : self.compositionOrder) {
+//  for (int64_t viewId : self.compositionOrder) {
+//    viewRects[viewId] = self.currentCompositionParams[viewId].finalBoundingRect();
+//  }
+  for (int64_t viewId : currentFrameCompositionOrder) {
     viewRects[viewId] = self.currentCompositionParams[viewId].finalBoundingRect();
   }
 
+//  std::unordered_map<int64_t, DlRect> overlayLayers =
+//      SliceViews(background_frame->Canvas(), self.compositionOrder, self.slices, viewRects);
   std::unordered_map<int64_t, DlRect> overlayLayers =
-      SliceViews(background_frame->Canvas(), self.compositionOrder, self.slices, viewRects);
+      SliceViews(background_frame->Canvas(), currentFrameCompositionOrder, self.slices, viewRects);
 
   size_t requiredOverlayLayers = 0;
-  for (int64_t viewId : self.compositionOrder) {
+//  for (int64_t viewId : self.compositionOrder) {
+  for (int64_t viewId : currentFrameCompositionOrder) {
     std::unordered_map<int64_t, DlRect>::const_iterator overlay = overlayLayers.find(viewId);
     if (overlay == overlayLayers.end()) {
       continue;
@@ -706,7 +747,8 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   [self createMissingOverlays:requiredOverlayLayers withIosContext:iosContext];
 
   int64_t overlayId = 0;
-  for (int64_t viewId : self.compositionOrder) {
+//  for (int64_t viewId : self.compositionOrder) {
+  for (int64_t viewId : currentFrameCompositionOrder) {
     std::unordered_map<int64_t, DlRect>::const_iterator overlay = overlayLayers.find(viewId);
     if (overlay == overlayLayers.end()) {
       continue;
@@ -758,12 +800,17 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   std::vector<std::shared_ptr<flutter::OverlayLayer>> unusedLayers =
       self.layerPool->RemoveUnusedLayers();
   self.layerPool->RecycleLayers();
+  
+  std::unordered_set<int64_t> currentViewsToRecomposite;
+  for (int64_t viewId : self.viewsToRecomposite) {
+    currentViewsToRecomposite.insert(viewId);
+  }
 
   auto task = [self,                                                      //
                platformViewLayers = std::move(platformViewLayers),        //
                currentCompositionParams = self.currentCompositionParams,  //
-               viewsToRecomposite = self.viewsToRecomposite,              //
-               compositionOrder = self.compositionOrder,                  //
+               viewsToRecomposite = currentViewsToRecomposite,//self.viewsToRecomposite,              //
+               compositionOrder = currentFrameCompositionOrder,//self.compositionOrder,                  //
                unusedLayers = std::move(unusedLayers),                    //
                surfaceFrames = std::move(surfaceFrames)                   //
   ]() mutable {
@@ -835,7 +882,9 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 
   // Composite Platform Views.
   for (int64_t viewId : viewsToRecomposite) {
-    [self compositeView:viewId withParams:currentCompositionParams[viewId]];
+    if (compositionOrder.find(viewId) != compositionOrder.end()) {
+      [self compositeView:viewId withParams:currentCompositionParams[viewId]];
+    }
   }
 
   // Present callbacks.
@@ -859,6 +908,9 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   UIView* flutterView = self.flutterView;
 
   self.previousCompositionOrder.clear();
+  
+  
+  
   NSMutableArray* desiredPlatformSubviews = [NSMutableArray array];
   for (int64_t platformViewId : compositionOrder) {
     self.previousCompositionOrder.push_back(platformViewId);
@@ -942,6 +994,7 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
     self.currentCompositionParams.erase(viewId);
     self.viewsToRecomposite.erase(viewId);
     self.platformViews.erase(viewId);
+    self.platformViewIdToFlutterViewIdMapping.erase(viewId);
   }
   self.viewsToDispose = std::move(viewsToDelayDispose);
   return views;
@@ -951,6 +1004,7 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   self.slices.clear();
   self.compositionOrder.clear();
   self.visitedPlatformViews.clear();
+//  self.platformViewIdToFlutterViewIdMapping.clear();
 }
 
 - (void)pushVisitedPlatformViewId:(int64_t)viewId {
@@ -959,6 +1013,11 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 
 - (const flutter::EmbeddedViewParams&)compositionParamsForView:(int64_t)viewId {
   return self.currentCompositionParams.find(viewId)->second;
+}
+
+- (void)collectView:(int64_t)flutterViewId {
+  self.flutterViewHadPlatformViews.erase(flutterViewId);
+  self.flutterViewPreviousCompositionOrder.erase(flutterViewId);
 }
 
 #pragma mark - Properties
@@ -1010,6 +1069,14 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 // platformViewIdToFlutterViewIdMapping
 - (std::unordered_map<int64_t, int64_t>&)platformViewIdToFlutterViewIdMapping {
   return _platformViewIdToFlutterViewIdMapping;
+}
+
+- (std::unordered_map<int64_t, std::vector<int64_t>>&) flutterViewPreviousCompositionOrder {
+  return _flutterViewPreviousCompositionOrder;
+}
+
+- (std::unordered_map<int64_t, BOOL>&) flutterViewHadPlatformViews {
+  return _flutterViewHadPlatformViews;
 }
 
 @end

@@ -59,7 +59,8 @@ NS_ASSUME_NONNULL_BEGIN
 ///        mutator parameters.
 ///
 /// Called from the raster thread.
-- (void)prerollCompositeEmbeddedView:(int64_t)viewId
+- (void)prerollCompositeEmbeddedView:(int64_t)flutterViewId
+                      platformViewId:(int64_t)viewId
                           withParams:(std::unique_ptr<flutter::EmbeddedViewParams>)params;
 
 /// @brief Returns the`FlutterTouchInterceptingView` with the provided view_id.
@@ -95,7 +96,8 @@ NS_ASSUME_NONNULL_BEGIN
 /// mutations.
 ///
 /// Called from the raster thread.
-- (BOOL)submitFrame:(std::unique_ptr<flutter::SurfaceFrame>)frame
+- (BOOL)submitFrame:(int64_t)flutter_view_id
+              frame:(std::unique_ptr<flutter::SurfaceFrame>)frame
      withIosContext:(const std::shared_ptr<flutter::IOSContext>&)iosContext;
 
 /// @brief Handler for platform view message channels.
@@ -113,6 +115,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// @brief Pushes the view id of a visted platform view to the list of visied platform views.
 - (void)pushVisitedPlatformViewId:(int64_t)viewId;
+
+- (void)collectView:(int64_t)flutterViewId;
 
 @end
 

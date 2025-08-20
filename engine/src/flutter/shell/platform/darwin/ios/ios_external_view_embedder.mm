@@ -52,7 +52,9 @@ void IOSExternalViewEmbedder::PrerollCompositeEmbeddedView(
     std::unique_ptr<EmbeddedViewParams> params) {
   TRACE_EVENT0("flutter", "IOSExternalViewEmbedder::PrerollCompositeEmbeddedView");
   FML_CHECK(platform_views_controller_);
-  [platform_views_controller_ prerollCompositeEmbeddedView:view_id withParams:std::move(params)];
+  [platform_views_controller_ prerollCompositeEmbeddedView:flutter_view_id
+                                            platformViewId:view_id
+                                                withParams:std::move(params)];
 }
 
 // |ExternalViewEmbedder|
@@ -114,6 +116,10 @@ void IOSExternalViewEmbedder::PushFilterToVisitedPlatformViews(
 // |ExternalViewEmbedder|
 void IOSExternalViewEmbedder::PushVisitedPlatformView(int64_t flutter_view_id, int64_t view_id) {
   [platform_views_controller_ pushVisitedPlatformViewId:view_id];
+}
+
+void IOSExternalViewEmbedder::CollectView(int64_t view_id) {
+  [platform_views_controller_ collectView:view_id];
 }
 
 }  // namespace flutter
