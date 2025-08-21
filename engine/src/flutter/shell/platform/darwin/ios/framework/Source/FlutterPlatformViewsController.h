@@ -47,7 +47,7 @@ NS_ASSUME_NONNULL_BEGIN
         (FlutterPlatformViewGestureRecognizersBlockingPolicy)gestureRecognizerBlockingPolicy;
 
 /// @brief Mark the beginning of a frame and record the size of the onscreen.
-- (void)beginFrameWithSize:(flutter::DlISize)frameSize;
+- (void)beginFrameWithSize:(flutter::DlISize)frameSize flutterViewId:(int64_t)viewId;
 
 /// @brief Cancel the current frame, indicating that no platform views are composited.
 ///

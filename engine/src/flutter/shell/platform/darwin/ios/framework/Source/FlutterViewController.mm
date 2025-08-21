@@ -805,14 +805,16 @@ static void SendFakeTouchEvent(UIScreen* screen,
   // thread.
   if (appeared) {
     [self installFirstFrameCallback];
-    self.platformViewsController.flutterView = self.flutterView;
-    self.platformViewsController.flutterViewController = self;
+//    self.platformViewsController.flutterView = self.flutterView;
+//    self.platformViewsController.flutterViewController = self;
+    [self.platformViewsController attachFlutterView:self.viewIdentifier withView:self.flutterView];
     [self.engine notifyViewCreated];
   } else {
     self.displayingFlutterUI = NO;
     [self.engine notifyViewDestroyed];
-    self.platformViewsController.flutterView = nil;
-    self.platformViewsController.flutterViewController = nil;
+//    self.platformViewsController.flutterView = nil;
+//    self.platformViewsController.flutterViewController = nil;
+    [self.platformViewsController detachFlutterView:self.viewIdentifier];
   }
 }
 

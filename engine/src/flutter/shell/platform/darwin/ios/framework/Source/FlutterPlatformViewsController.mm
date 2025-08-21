@@ -106,6 +106,8 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 /// The size of the current onscreen surface in physical pixels.
 @property(nonatomic, assign) DlISize frameSize;
 
+@property(nonatomic, assign) int64_t currentFlutterViewId;
+
 /// The task runner for posting tasks to the platform thread.
 @property(nonatomic, readonly) const fml::RefPtr<fml::TaskRunner>& platformTaskRunner;
 
@@ -418,9 +420,11 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   self.gestureRecognizersBlockingPolicies[idString] = gestureRecognizerBlockingPolicy;
 }
 
-- (void)beginFrameWithSize:(DlISize)frameSize {
+- (void)beginFrameWithSize:(flutter::DlISize)frameSize flutterViewId:(int64_t)viewId {
   [self resetFrameState];
   self.frameSize = frameSize;
+  self.currentFlutterViewId = viewId;
+  self.flutterView = [self.flutterViews objectForKey:@(viewId)];
 }
 
 - (void)cancelFrame {
@@ -668,6 +672,7 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
     }
     self.platformViews.clear();
     self.previousCompositionOrder.clear();
+    self.flutterViewPreviousCompositionOrder.clear();
   });
 
   self.compositionOrder.clear();
@@ -699,7 +704,7 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   }
   
 //  if (self.flutterView == nil || (self.currentFrameCompositionOrder.empty() && !self.hadPlatformViews)) {
-  if (self.flutterView == nil || (self.currentFrameCompositionOrder.empty() && !hadPlatformViews)) {
+  if (self.flutterView == nil || (currentFrameCompositionOrder.empty() && !hadPlatformViews)) {
 //    self.hadPlatformViews = NO;
     self.flutterViewHadPlatformViews[flutter_view_id] = NO;
     return background_frame->Submit();
@@ -885,7 +890,8 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 
   // Composite Platform Views.
   for (int64_t viewId : viewsToRecomposite) {
-    if (compositionOrder.find(viewId) != compositionOrder.end()) {
+    if (std::find(compositionOrder.begin(), compositionOrder.end(), viewId) != compositionOrder.end()) {
+//    if (compositionOrder.find(viewId) != compositionOrder.end()) {
       [self compositeView:viewId withParams:currentCompositionParams[viewId]];
     }
   }
@@ -910,13 +916,25 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   FML_DCHECK(self.flutterView);
   UIView* flutterView = self.flutterView;
 
-  self.previousCompositionOrder.clear();
+//  self.previousCompositionOrder.clear();
+  
+//  previousCompositionOrder
+  
+//  BOOL hadPlatformViews = NO;
+  auto it = self.flutterViewPreviousCompositionOrder.find(self.currentFlutterViewId);
+  if (it != self.flutterViewPreviousCompositionOrder.end()) {
+//    hadPlatformViews = it->second;
+    it->second.clear();
+  } else {
+    self.flutterViewPreviousCompositionOrder.emplace(self.currentFlutterViewId, std::vector<int64_t>{});
+  }
   
   
   
   NSMutableArray* desiredPlatformSubviews = [NSMutableArray array];
   for (int64_t platformViewId : compositionOrder) {
-    self.previousCompositionOrder.push_back(platformViewId);
+    self.flutterViewPreviousCompositionOrder[self.currentFlutterViewId].push_back(platformViewId);
+//    self.previousCompositionOrder.push_back(platformViewId);
     UIView* platformViewRoot = self.platformViews[platformViewId].root_view;
     if (platformViewRoot != nil) {
       [desiredPlatformSubviews addObject:platformViewRoot];
@@ -969,11 +987,15 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   for (int64_t viewId : compositionOrder) {
     compositionOrderSet.insert(viewId);
   }
-  // Remove unused platform views.
-  for (int64_t viewId : self.previousCompositionOrder) {
-    if (compositionOrderSet.find(viewId) == compositionOrderSet.end()) {
-      UIView* platformViewRoot = self.platformViews[viewId].root_view;
-      [platformViewRoot removeFromSuperview];
+  auto it = self.flutterViewPreviousCompositionOrder.find(self.currentFlutterViewId);
+  if (it != self.flutterViewPreviousCompositionOrder.end()) {
+    // Remove unused platform views.
+//    for (int64_t viewId : self.previousCompositionOrder) {
+    for (int64_t viewId : it->second) {
+      if (compositionOrderSet.find(viewId) == compositionOrderSet.end()) {
+        UIView* platformViewRoot = self.platformViews[viewId].root_view;
+        [platformViewRoot removeFromSuperview];
+      }
     }
   }
 }

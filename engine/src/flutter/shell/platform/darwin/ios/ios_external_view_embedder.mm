@@ -42,7 +42,7 @@ void IOSExternalViewEmbedder::BeginFrame(
 // |ExternalViewEmbedder|
 void IOSExternalViewEmbedder::PrepareFlutterView(int64_t flutter_view_id, DlISize frame_size, double device_pixel_ratio) {
   FML_CHECK(platform_views_controller_);
-  [platform_views_controller_ beginFrameWithSize:frame_size];
+  [platform_views_controller_ beginFrameWithSize:frame_size flutterViewId:flutter_view_id];
 }
 
 // |ExternalViewEmbedder|
@@ -87,7 +87,7 @@ void IOSExternalViewEmbedder::SubmitFlutterView(
   // Properly support multi-view in the future.
 //  FML_DCHECK(flutter_view_id == kFlutterImplicitViewId);
   FML_CHECK(platform_views_controller_);
-  [platform_views_controller_ submitFrame:std::move(frame) withIosContext:ios_context_];
+  [platform_views_controller_ submitFrame:flutter_view_id frame:std::move(frame) withIosContext:ios_context_];
   TRACE_EVENT0("flutter", "IOSExternalViewEmbedder::DidSubmitFrame");
 }
 
