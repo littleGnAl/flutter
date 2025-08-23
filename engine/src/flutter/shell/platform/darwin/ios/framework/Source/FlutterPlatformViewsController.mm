@@ -690,12 +690,12 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   TRACE_EVENT0("flutter", "PlatformViewsController::SubmitFrame");
   
   
-  std::vector<int64_t> currentFrameCompositionOrder;
-  for (int64_t viewId : self.compositionOrder) {
-    if (self.platformViewIdToFlutterViewIdMapping[viewId] == flutter_view_id) {
-      currentFrameCompositionOrder.push_back(viewId);
-    }
-  }
+//  std::vector<int64_t> currentFrameCompositionOrder;
+//  for (int64_t viewId : self.compositionOrder) {
+//    if (self.platformViewIdToFlutterViewIdMapping[viewId] == flutter_view_id) {
+//      currentFrameCompositionOrder.push_back(viewId);
+//    }
+//  }
   
   BOOL hadPlatformViews = NO;
   auto it = self.flutterViewHadPlatformViews.find(flutter_view_id);
@@ -704,13 +704,13 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   }
   
 //  if (self.flutterView == nil || (self.currentFrameCompositionOrder.empty() && !self.hadPlatformViews)) {
-  if (self.flutterView == nil || (currentFrameCompositionOrder.empty() && !hadPlatformViews)) {
+  if (self.flutterView == nil || (self.compositionOrder.empty() && !hadPlatformViews)) {
 //    self.hadPlatformViews = NO;
     self.flutterViewHadPlatformViews[flutter_view_id] = NO;
     return background_frame->Submit();
   }
 //  self.hadPlatformViews = !self.compositionOrder.empty();
-  self.flutterViewHadPlatformViews[flutter_view_id] = !currentFrameCompositionOrder.empty();
+  self.flutterViewHadPlatformViews[flutter_view_id] = !self.compositionOrder.empty();// !currentFrameCompositionOrder.empty();
   
 
   // No platform views to render; we're done.
@@ -723,25 +723,25 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   bool didEncode = true;
   LayersMap platformViewLayers;
   std::vector<std::unique_ptr<flutter::SurfaceFrame>> surfaceFrames;
-//  surfaceFrames.reserve(self.compositionOrder.size());
-  surfaceFrames.reserve(currentFrameCompositionOrder.size());
+  surfaceFrames.reserve(self.compositionOrder.size());
+//  surfaceFrames.reserve(currentFrameCompositionOrder.size());
   std::unordered_map<int64_t, DlRect> viewRects;
 
-//  for (int64_t viewId : self.compositionOrder) {
-//    viewRects[viewId] = self.currentCompositionParams[viewId].finalBoundingRect();
-//  }
-  for (int64_t viewId : currentFrameCompositionOrder) {
+  for (int64_t viewId : self.compositionOrder) {
     viewRects[viewId] = self.currentCompositionParams[viewId].finalBoundingRect();
   }
+//  for (int64_t viewId : currentFrameCompositionOrder) {
+//    viewRects[viewId] = self.currentCompositionParams[viewId].finalBoundingRect();
+//  }
 
-//  std::unordered_map<int64_t, DlRect> overlayLayers =
-//      SliceViews(background_frame->Canvas(), self.compositionOrder, self.slices, viewRects);
   std::unordered_map<int64_t, DlRect> overlayLayers =
-      SliceViews(background_frame->Canvas(), currentFrameCompositionOrder, self.slices, viewRects);
+      SliceViews(background_frame->Canvas(), self.compositionOrder, self.slices, viewRects);
+//  std::unordered_map<int64_t, DlRect> overlayLayers =
+//      SliceViews(background_frame->Canvas(), currentFrameCompositionOrder, self.slices, viewRects);
 
   size_t requiredOverlayLayers = 0;
-//  for (int64_t viewId : self.compositionOrder) {
-  for (int64_t viewId : currentFrameCompositionOrder) {
+  for (int64_t viewId : self.compositionOrder) {
+//  for (int64_t viewId : currentFrameCompositionOrder) {
     std::unordered_map<int64_t, DlRect>::const_iterator overlay = overlayLayers.find(viewId);
     if (overlay == overlayLayers.end()) {
       continue;
@@ -755,8 +755,8 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   [self createMissingOverlays:requiredOverlayLayers withIosContext:iosContext];
 
   int64_t overlayId = 0;
-//  for (int64_t viewId : self.compositionOrder) {
-  for (int64_t viewId : currentFrameCompositionOrder) {
+  for (int64_t viewId : self.compositionOrder) {
+//  for (int64_t viewId : currentFrameCompositionOrder) {
     std::unordered_map<int64_t, DlRect>::const_iterator overlay = overlayLayers.find(viewId);
     if (overlay == overlayLayers.end()) {
       continue;
@@ -807,18 +807,18 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   // Mark all layers as available, so they can be used in the next frame.
   std::vector<std::shared_ptr<flutter::OverlayLayer>> unusedLayers =
       self.layerPool->RemoveUnusedLayers();
-  self.layerPool->RecycleLayers();
+//  self.layerPool->RecycleLayers();
   
-  std::unordered_set<int64_t> currentViewsToRecomposite;
-  for (int64_t viewId : self.viewsToRecomposite) {
-    currentViewsToRecomposite.insert(viewId);
-  }
+//  std::unordered_set<int64_t> currentViewsToRecomposite;
+//  for (int64_t viewId : self.viewsToRecomposite) {
+//    currentViewsToRecomposite.insert(viewId);
+//  }
 
   auto task = [self,                                                      //
                platformViewLayers = std::move(platformViewLayers),        //
                currentCompositionParams = self.currentCompositionParams,  //
-               viewsToRecomposite = currentViewsToRecomposite,//self.viewsToRecomposite,              //
-               compositionOrder = currentFrameCompositionOrder,//self.compositionOrder,                  //
+               viewsToRecomposite = self.viewsToRecomposite,              //
+               compositionOrder = self.compositionOrder,                  //
                unusedLayers = std::move(unusedLayers),                    //
                surfaceFrames = std::move(surfaceFrames)                   //
   ]() mutable {
@@ -890,10 +890,10 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 
   // Composite Platform Views.
   for (int64_t viewId : viewsToRecomposite) {
-    if (std::find(compositionOrder.begin(), compositionOrder.end(), viewId) != compositionOrder.end()) {
+//    if (std::find(compositionOrder.begin(), compositionOrder.end(), viewId) != compositionOrder.end()) {
 //    if (compositionOrder.find(viewId) != compositionOrder.end()) {
       [self compositeView:viewId withParams:currentCompositionParams[viewId]];
-    }
+//    }
   }
 
   // Present callbacks.

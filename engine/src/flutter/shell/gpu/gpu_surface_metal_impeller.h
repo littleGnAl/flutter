@@ -14,6 +14,7 @@
 #include "flutter/impeller/renderer/backend/metal/swapchain_transients_mtl.h"
 #include "flutter/shell/gpu/gpu_surface_metal_delegate.h"
 #include "third_party/skia/include/gpu/ganesh/mtl/GrMtlTypes.h"
+#include "flutter/common/constants.h"
 
 namespace flutter {
 
@@ -59,7 +60,7 @@ class IMPELLER_CA_METAL_LAYER_AVAILABLE GPUSurfaceMetalImpeller
 
   std::unique_ptr<SurfaceFrame> AcquireFrame(
       const DlISize& frame_size) override {
-    return nullptr;
+    return AcquireFrame(kFlutterImplicitViewId, frame_size);
   }
 
   std::unique_ptr<SurfaceFrame> AcquireFrameFromCAMetalLayer(
