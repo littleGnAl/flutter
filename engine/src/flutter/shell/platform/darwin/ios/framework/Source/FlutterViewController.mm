@@ -207,7 +207,8 @@ typedef struct MouseState {
     [self performCommonViewControllerInitialization];
     // [engine setViewController:self];
 
-    _viewIdentifier = [engine addViewController:self];
+//    _viewIdentifier =
+    [engine addViewController:self];
   }
 
   return self;

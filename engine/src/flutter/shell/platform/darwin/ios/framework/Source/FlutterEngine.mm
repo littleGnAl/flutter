@@ -393,7 +393,7 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
     return;
   }
 
-  if ([_viewControllers count] == 1 && !_allowHeadlessExecution) {
+  if ([_viewControllers count] == 1) {
     self.platformView->NotifyCreated();
   }
 }
@@ -403,7 +403,7 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
     return;
   }
 
-  if ([_viewControllers count] == 1 && !_allowHeadlessExecution) {
+  if ([_viewControllers count] == 0) {
     self.platformView->NotifyDestroyed();
   }
 }
