@@ -925,6 +925,7 @@ static void SendFakeTouchEvent(UIScreen* screen,
     if (_viewportMetrics.physical_width) {
       [self surfaceUpdated:YES];
     }
+    [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.inactive"];
   }
 
   [super viewWillAppear:animated];
@@ -937,11 +938,14 @@ static void SendFakeTouchEvent(UIScreen* screen,
     [self onUserSettingsChanged:nil];
     [self onAccessibilityStatusChanged:nil];
 
-    if (self.stateIsActive) {
-      [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.resumed"];
-    }
+//    if (self.stateIsActive) {
+//      [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.resumed"];
+//    }
   } else {
     [self onAccessibilityStatusChanged:nil];
+  }
+  if (self.stateIsActive) {
+    [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.resumed"];
   }
   [super viewDidAppear:animated];
 }
@@ -949,9 +953,9 @@ static void SendFakeTouchEvent(UIScreen* screen,
 - (void)viewWillDisappear:(BOOL)animated {
   TRACE_EVENT0("flutter", "viewWillDisappear");
 //  if (self.engine.viewController == self) {
-  if (_viewIdentifier == flutter::kFlutterImplicitViewId) {
+//  if (_viewIdentifier == flutter::kFlutterImplicitViewId) {
     [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.inactive"];
-  }
+//  }
   [super viewWillDisappear:animated];
 }
 
@@ -969,6 +973,7 @@ static void SendFakeTouchEvent(UIScreen* screen,
     [self invalidateKeyboardAnimationVSyncClient];
     [self ensureViewportMetricsIsCorrect];
     [self surfaceUpdated:NO];
+    [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.paused"];
     [self flushOngoingTouches];
   }
 
