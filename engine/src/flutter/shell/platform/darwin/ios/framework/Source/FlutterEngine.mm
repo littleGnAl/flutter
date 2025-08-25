@@ -616,7 +616,7 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
 //    self.flutterViewControllerWillDeallocObserver = nil;
     [self notifyLowMemory];
   } else {
-     bool removed = false;
+//     bool removed = false;
     //  FlutterRemoveViewInfo info;
     //  info.struct_size = sizeof(FlutterRemoveViewInfo);
     //  info.view_id = viewIdentifier;
@@ -631,20 +631,23 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
     //    }];
     //  };
 
-     NSRunLoop* currentRunLoop = NSRunLoop.currentRunLoop;
+    bool removed = NO;
+    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
 
-     self.platformView->RemoveView(viewIdentifier, [&removed, currentRunLoop](bool result) {
-       CFRunLoopPerformBlock((__bridge CFRunLoopRef)currentRunLoop, kCFRunLoopCommonModes, ^{
+     self.platformView->RemoveView(viewIdentifier, [&removed, &sem](bool result) {
+//       dispatch_async(dispatch_get_main_queue(), ^{
          removed = result;
-       });
-       CFRunLoopWakeUp((__bridge CFRunLoopRef)currentRunLoop);
+         dispatch_semaphore_signal(sem);
+//       });
      });
 
 //     _embedderAPI.RemoveView(_engine, &info);
-     while (!removed) {
-       [currentRunLoop runMode:NSDefaultRunLoopMode
-                    beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
-     }
+//     while (!removed) {
+//       [currentRunLoop runMode:NSDefaultRunLoopMode
+//                    beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
+//     }
+    
+    dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
    }
   
   self.platformView->RemoveOwnerViewController(viewIdentifier);

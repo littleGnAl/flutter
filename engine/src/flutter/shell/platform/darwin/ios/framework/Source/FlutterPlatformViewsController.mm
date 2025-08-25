@@ -496,6 +496,9 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 
 - (void)clipViewSetMaskView:(UIView*)clipView {
   FML_DCHECK([[NSThread currentThread] isMainThread]);
+  if (self.flutterView == nil) {
+    return;
+  }
   if (clipView.maskView) {
     return;
   }
@@ -838,6 +841,10 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 - (void)createMissingOverlays:(size_t)requiredOverlayLayers
                withIosContext:(const std::shared_ptr<flutter::IOSContext>&)iosContext {
   TRACE_EVENT0("flutter", "PlatformViewsController::CreateMissingLayers");
+  
+  if (self.flutterView == nil) {
+    return;
+  }
 
   if (requiredOverlayLayers <= self.layerPool->size()) {
     return;
@@ -871,6 +878,10 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
                    (const std::vector<std::unique_ptr<flutter::SurfaceFrame>>&)surfaceFrames {
   TRACE_EVENT0("flutter", "PlatformViewsController::PerformSubmit");
   FML_DCHECK([[NSThread currentThread] isMainThread]);
+  
+  if (self.flutterView == nil) {
+    return;
+  }
 
   [CATransaction begin];
 
@@ -913,7 +924,10 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 
 - (void)bringLayersIntoView:(const LayersMap&)layerMap
        withCompositionOrder:(const std::vector<int64_t>&)compositionOrder {
-  FML_DCHECK(self.flutterView);
+  if (self.flutterView == nil) {
+    return;
+  }
+//  FML_DCHECK(self.flutterView);
   UIView* flutterView = self.flutterView;
 
 //  self.previousCompositionOrder.clear();
