@@ -106,7 +106,7 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 /// The size of the current onscreen surface in physical pixels.
 @property(nonatomic, assign) DlISize frameSize;
 
-@property(nonatomic, assign) int64_t currentFlutterViewId;
+@property(atomic, assign) int64_t currentFlutterViewId;
 
 /// The task runner for posting tasks to the platform thread.
 @property(nonatomic, readonly) const fml::RefPtr<fml::TaskRunner>& platformTaskRunner;
@@ -184,7 +184,8 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
                 unusedLayers:
                     (const std::vector<std::shared_ptr<flutter::OverlayLayer>>&)unusedLayers
                surfaceFrames:
-                   (const std::vector<std::unique_ptr<flutter::SurfaceFrame>>&)surfaceFrames;
+                   (const std::vector<std::unique_ptr<flutter::SurfaceFrame>>&)surfaceFrames
+        currentFlutterViewId:(int64_t)currentFlutterViewId;
 
 - (void)onCreate:(FlutterMethodCall*)call result:(FlutterResult)result;
 - (void)onDispose:(FlutterMethodCall*)call result:(FlutterResult)result;
@@ -424,7 +425,7 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   [self resetFrameState];
   self.frameSize = frameSize;
   self.currentFlutterViewId = viewId;
-  self.flutterView = [self.flutterViews objectForKey:@(viewId)];
+//  self.flutterView = [self.flutterViews objectForKey:@(viewId)];
 }
 
 - (void)cancelFrame {
@@ -707,7 +708,8 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   }
   
 //  if (self.flutterView == nil || (self.currentFrameCompositionOrder.empty() && !self.hadPlatformViews)) {
-  if (self.flutterView == nil || (self.compositionOrder.empty() && !hadPlatformViews)) {
+//  if (self.flutterView == nil || (self.compositionOrder.empty() && !hadPlatformViews)) {
+  if ((self.compositionOrder.empty() && !hadPlatformViews)) {
 //    self.hadPlatformViews = NO;
     self.flutterViewHadPlatformViews[flutter_view_id] = NO;
     return background_frame->Submit();
@@ -823,14 +825,16 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
                viewsToRecomposite = self.viewsToRecomposite,              //
                compositionOrder = self.compositionOrder,                  //
                unusedLayers = std::move(unusedLayers),                    //
-               surfaceFrames = std::move(surfaceFrames)                   //
+               surfaceFrames = std::move(surfaceFrames),                  //
+               currentFlutterViewId = self.currentFlutterViewId           //
   ]() mutable {
     [self performSubmit:platformViewLayers
         currentCompositionParams:currentCompositionParams
               viewsToRecomposite:viewsToRecomposite
                 compositionOrder:compositionOrder
                     unusedLayers:unusedLayers
-                   surfaceFrames:surfaceFrames];
+                   surfaceFrames:surfaceFrames
+            currentFlutterViewId:currentFlutterViewId];
   };
 
   fml::TaskRunner::RunNowOrPostTask(self.platformTaskRunner, fml::MakeCopyable(std::move(task)));
@@ -875,9 +879,12 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
                 unusedLayers:
                     (const std::vector<std::shared_ptr<flutter::OverlayLayer>>&)unusedLayers
                surfaceFrames:
-                   (const std::vector<std::unique_ptr<flutter::SurfaceFrame>>&)surfaceFrames {
+                   (const std::vector<std::unique_ptr<flutter::SurfaceFrame>>&)surfaceFrames
+        currentFlutterViewId:(int64_t)currentFlutterViewId {
   TRACE_EVENT0("flutter", "PlatformViewsController::PerformSubmit");
   FML_DCHECK([[NSThread currentThread] isMainThread]);
+  
+  self.flutterView = [self.flutterViews objectForKey:@(currentFlutterViewId)];
   
   if (self.flutterView == nil) {
     return;
