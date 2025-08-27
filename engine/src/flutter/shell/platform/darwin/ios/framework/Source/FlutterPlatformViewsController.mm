@@ -213,7 +213,8 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 // Appends the overlay views and platform view and sets their z index based on the composition
 // order.
 - (void)bringLayersIntoView:(const LayersMap&)layerMap
-       withCompositionOrder:(const std::vector<int64_t>&)compositionOrder;
+       withCompositionOrder:(const std::vector<int64_t>&)compositionOrder
+       currentFlutterViewId:(int64_t)currentFlutterViewId;
 
 - (std::shared_ptr<flutter::OverlayLayer>)nextLayerInPool;
 
@@ -224,7 +225,8 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 /// Removes overlay views and platform views that aren't needed in the current frame.
 /// Must run on the platform thread.
 - (void)removeUnusedLayers:(const std::vector<std::shared_ptr<flutter::OverlayLayer>>&)unusedLayers
-      withCompositionOrder:(const std::vector<int64_t>&)compositionOrder;
+      withCompositionOrder:(const std::vector<int64_t>&)compositionOrder
+      currentFlutterViewId:(int64_t)currentFlutterViewId;
 
 /// Computes and returns all views to be disposed on the platform thread, removes them from
 /// self.platformViews, self.viewsToRecomposite, and self.currentCompositionParams. Any views that
@@ -921,16 +923,19 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 
   // If a layer was allocated in the previous frame, but it's not used in the current frame,
   // then it can be removed from the scene.
-  [self removeUnusedLayers:unusedLayers withCompositionOrder:compositionOrder];
+  [self removeUnusedLayers:unusedLayers withCompositionOrder:compositionOrder currentFlutterViewId:currentFlutterViewId];
 
   // Organize the layers by their z indexes.
-  [self bringLayersIntoView:platformViewLayers withCompositionOrder:compositionOrder];
+  [self bringLayersIntoView:platformViewLayers
+       withCompositionOrder:compositionOrder
+       currentFlutterViewId:currentFlutterViewId];
 
   [CATransaction commit];
 }
 
 - (void)bringLayersIntoView:(const LayersMap&)layerMap
-       withCompositionOrder:(const std::vector<int64_t>&)compositionOrder {
+       withCompositionOrder:(const std::vector<int64_t>&)compositionOrder
+       currentFlutterViewId:(int64_t)currentFlutterViewId {
   if (self.flutterView == nil) {
     return;
   }
@@ -942,19 +947,19 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 //  previousCompositionOrder
   
 //  BOOL hadPlatformViews = NO;
-  auto it = self.flutterViewPreviousCompositionOrder.find(self.currentFlutterViewId);
+  auto it = self.flutterViewPreviousCompositionOrder.find(currentFlutterViewId);
   if (it != self.flutterViewPreviousCompositionOrder.end()) {
 //    hadPlatformViews = it->second;
     it->second.clear();
   } else {
-    self.flutterViewPreviousCompositionOrder.emplace(self.currentFlutterViewId, std::vector<int64_t>{});
+    self.flutterViewPreviousCompositionOrder.emplace(currentFlutterViewId, std::vector<int64_t>{});
   }
   
   
   
   NSMutableArray* desiredPlatformSubviews = [NSMutableArray array];
   for (int64_t platformViewId : compositionOrder) {
-    self.flutterViewPreviousCompositionOrder[self.currentFlutterViewId].push_back(platformViewId);
+    self.flutterViewPreviousCompositionOrder[currentFlutterViewId].push_back(platformViewId);
 //    self.previousCompositionOrder.push_back(platformViewId);
     UIView* platformViewRoot = self.platformViews[platformViewId].root_view;
     if (platformViewRoot != nil) {
@@ -999,7 +1004,8 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 }
 
 - (void)removeUnusedLayers:(const std::vector<std::shared_ptr<flutter::OverlayLayer>>&)unusedLayers
-      withCompositionOrder:(const std::vector<int64_t>&)compositionOrder {
+      withCompositionOrder:(const std::vector<int64_t>&)compositionOrder
+      currentFlutterViewId:(int64_t)currentFlutterViewId {
   for (const std::shared_ptr<flutter::OverlayLayer>& layer : unusedLayers) {
     [layer->overlay_view_wrapper removeFromSuperview];
   }
@@ -1008,7 +1014,7 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   for (int64_t viewId : compositionOrder) {
     compositionOrderSet.insert(viewId);
   }
-  auto it = self.flutterViewPreviousCompositionOrder.find(self.currentFlutterViewId);
+  auto it = self.flutterViewPreviousCompositionOrder.find(currentFlutterViewId);
   if (it != self.flutterViewPreviousCompositionOrder.end()) {
     // Remove unused platform views.
 //    for (int64_t viewId : self.previousCompositionOrder) {
