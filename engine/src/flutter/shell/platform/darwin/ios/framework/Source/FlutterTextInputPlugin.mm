@@ -10,6 +10,7 @@
 
 #include "unicode/uchar.h"
 
+#include "flutter/common/constants.h"
 #include "flutter/fml/logging.h"
 #include "flutter/fml/platform/darwin/string_range_sanitization.h"
 #import "flutter/shell/platform/darwin/common/InternalFlutterSwiftCommon/InternalFlutterSwiftCommon.h"
@@ -2405,7 +2406,7 @@ static BOOL IsSelectionRectBoundaryCloserToPoint(CGPoint point,
 
 - (void)pressesChanged:(NSSet<UIPress*>*)presses
              withEvent:(UIPressesEvent*)event API_AVAILABLE(ios(9.0)) {
-  [_textInputPlugin.currentViewController pressehandlePresssChanged:presses withEvent:event];
+  [_textInputPlugin.currentViewController pressesChanged:presses withEvent:event];
 }
 
 - (void)pressesEnded:(NSSet<UIPress*>*)presses
@@ -2474,7 +2475,13 @@ static BOOL IsSelectionRectBoundaryCloserToPoint(CGPoint point,
 
 @end
 
-@interface FlutterTextInputPlugin ()
+@interface FlutterTextInputPlugin () {
+  /**
+   * The FlutterViewController to manage input for.
+   */
+  __weak FlutterViewController* _currentViewController;
+}
+
 // The current password-autofillable input fields that have yet to be saved.
 @property(nonatomic, readonly)
     NSMutableDictionary<NSString*, FlutterTextInputView*>* autofillContext;
@@ -2488,10 +2495,6 @@ static BOOL IsSelectionRectBoundaryCloserToPoint(CGPoint point,
 @property(nonatomic, assign) CGRect keyboardRect;
 @property(nonatomic, assign) CGFloat previousPointerYPosition;
 @property(nonatomic, assign) CGFloat pointerYVelocity;
-/**
- * The FlutterViewController to manage input for.
- */
-__weak FlutterViewController* _currentViewController;
 @end
 
 @implementation FlutterTextInputPlugin {
@@ -2907,7 +2910,7 @@ __weak FlutterViewController* _currentViewController;
   [self cleanUpViewHierarchy:NO clearText:YES delayRemoval:YES];
   
   FlutterViewIdentifier viewId = flutter::kFlutterImplicitViewId;
-  NSObject* requestViewId = config[kViewId];
+  NSObject* requestViewId = configuration[kViewId];
   if ([requestViewId isKindOfClass:[NSNumber class]]) {
     viewId = [(NSNumber*)requestViewId longLongValue];
   }

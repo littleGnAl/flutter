@@ -96,6 +96,7 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
 
 @interface FlutterEngine () <FlutterIndirectScribbleDelegate,
                              FlutterUndoManagerDelegate,
+                             FlutterTextInputPluginDelegate,
                              FlutterTextInputDelegate,
                              FlutterBinaryMessenger,
                              FlutterTextureRegistry>
@@ -498,7 +499,7 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
   self.platformView->AddOwnerViewController(viewController);
   [self maybeSetupPlatformViewChannels];
   [self updateDisplays];
-  self.textInputPlugin.viewController = viewController;
+//  self.textInputPlugin.viewController = viewController;
 
 //  if (viewController) {
 //    __weak __block FlutterEngine* weakSelf = self;
@@ -735,7 +736,7 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
     [self.lifecycleChannel sendMessage:@"AppLifecycleState.detached"];
   }
 
-  self.textInputPlugin.viewController = nil;
+//  self.textInputPlugin.viewController = nil;
 //  if ([_viewControllers count] == 1 && !_allowHeadlessExecution) {
 ////  if (!self.allowHeadlessExecution) {
 //    [self destroyContext];
@@ -876,7 +877,7 @@ static constexpr int kNumProfilerSamplesPerSec = 5;
                                        binaryMessenger:self.binaryMessenger
                                                  codec:[FlutterJSONMessageCodec sharedInstance]];
 
-  self.textInputPlugin = [[FlutterTextInputPlugin alloc] initWithDelegate:self];
+  self.textInputPlugin = [[FlutterTextInputPlugin alloc] initWithDelegate:self textInputDelegate:self];
   self.textInputPlugin.indirectScribbleDelegate = self;
   [self.textInputPlugin setUpIndirectScribbleInteraction:self.viewController];
 
