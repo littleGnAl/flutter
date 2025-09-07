@@ -122,6 +122,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)detachFlutterView:(int64_t)flutterViewId;
 
+- (void)attachToFlutterViewController:(int64_t)flutterViewId withViewController:(__weak UIView*)view;
+
+- (void)detachFlutterView:(int64_t)flutterViewId;
+
 @end
 
 @interface FlutterPlatformViewsController (Testing)

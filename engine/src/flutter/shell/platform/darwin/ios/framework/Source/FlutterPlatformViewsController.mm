@@ -958,12 +958,14 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   
   
   NSMutableArray* desiredPlatformSubviews = [NSMutableArray array];
+  NSMutableArray* desiredTouchInterceptors = [NSMutableArray array];
   for (int64_t platformViewId : compositionOrder) {
     self.flutterViewPreviousCompositionOrder[currentFlutterViewId].push_back(platformViewId);
 //    self.previousCompositionOrder.push_back(platformViewId);
     UIView* platformViewRoot = self.platformViews[platformViewId].root_view;
     if (platformViewRoot != nil) {
       [desiredPlatformSubviews addObject:platformViewRoot];
+      [desiredTouchInterceptors addObject:self.platformViews[platformViewId].touch_interceptor];
     }
 
     auto maybeLayerData = layerMap.find(platformViewId);

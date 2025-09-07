@@ -176,6 +176,9 @@
 - (instancetype)initWithTarget:(id)target
                         action:(SEL)action
           forwardingRecognizer:(UIGestureRecognizer*)forwardingRecognizer;
+
+/// @brief The flutter view controller.
+@property(nonatomic, weak) UIViewController<FlutterViewResponder>* _Nullable flutterViewController;
 @end
 
 // While the FlutterDelayingGestureRecognizer is preventing touches from hitting the responder chain
