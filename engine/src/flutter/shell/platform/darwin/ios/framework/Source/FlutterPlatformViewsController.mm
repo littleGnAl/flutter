@@ -169,6 +169,8 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 
 @property(nonatomic, strong) NSMapTable<NSNumber *, UIView *> *flutterViews;
 
+@property(nonatomic, strong) NSMapTable<NSNumber *, FlutterViewController *> *flutterViewControllers;
+
 /// Populate any missing overlay layers.
 ///
 /// This requires posting a task to the platform thread and blocking on its completion.
@@ -268,6 +270,7 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 - (id)init {
   if (self = [super init]) {
     _flutterViews = [NSMapTable strongToWeakObjectsMapTable];
+    _flutterViewControllers = [NSMapTable strongToWeakObjectsMapTable];
     _layerPool = std::make_unique<flutter::OverlayLayerPool>();
     _maskViewPool =
         [[FlutterClippingMaskViewPool alloc] initWithCapacity:kFlutterClippingMaskViewPoolCapacity];
@@ -936,11 +939,14 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 - (void)bringLayersIntoView:(const LayersMap&)layerMap
        withCompositionOrder:(const std::vector<int64_t>&)compositionOrder
        currentFlutterViewId:(int64_t)currentFlutterViewId {
-  if (self.flutterView == nil) {
-    return;
-  }
+//  if (self.flutterView == nil) {
+//    return;
+//  }
 //  FML_DCHECK(self.flutterView);
-  UIView* flutterView = self.flutterView;
+  FlutterViewController* flutterViewController = [self.flutterViewControllers objectForKey:@(currentFlutterViewId)];
+  UIView* flutterView = flutterViewController.view;
+  FML_DCHECK(flutterView);
+  
 
 //  self.previousCompositionOrder.clear();
   
@@ -992,6 +998,10 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
     for (UIView* subview in desiredPlatformSubviews) {
       // `addSubview` will automatically reorder subview if it is already added.
       [flutterView addSubview:subview];
+    }
+    
+    for (FlutterTouchInterceptingView* interceptingView in desiredTouchInterceptors) {
+      interceptingView.flutterViewController = flutterViewController;
     }
   }
 }
@@ -1080,6 +1090,15 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 
 - (void)detachFlutterView:(int64_t)flutterViewId {
   [self.flutterViews removeObjectForKey:@(flutterViewId)];
+}
+
+- (void)attachToFlutterViewController:(int64_t)flutterViewId
+                   withViewController:(__weak FlutterViewController*)controller {
+  [self.flutterViewControllers setObject:controller forKey:@(flutterViewId)];
+}
+
+- (void)detachFromFlutterViewController:(int64_t)flutterViewId {
+  [self.flutterViewControllers removeObjectForKey:@(flutterViewId)];
 }
 
 #pragma mark - Properties

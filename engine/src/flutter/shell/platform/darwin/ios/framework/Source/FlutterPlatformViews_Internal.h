@@ -153,6 +153,9 @@
 @interface UIView (FirstResponder)
 // Returns YES if a view or any of its descendant view is the first responder. Returns NO otherwise.
 @property(nonatomic, readonly) BOOL flt_hasFirstResponderInViewHierarchySubtree;
+
+/// @brief The flutter view controller.
+@property(nonatomic, weak) UIViewController<FlutterViewResponder>* _Nullable flutterViewController;
 @end
 
 // This recognizer delays touch events from being dispatched to the responder chain until it failed
@@ -176,9 +179,6 @@
 - (instancetype)initWithTarget:(id)target
                         action:(SEL)action
           forwardingRecognizer:(UIGestureRecognizer*)forwardingRecognizer;
-
-/// @brief The flutter view controller.
-@property(nonatomic, weak) UIViewController<FlutterViewResponder>* _Nullable flutterViewController;
 @end
 
 // While the FlutterDelayingGestureRecognizer is preventing touches from hitting the responder chain
