@@ -148,14 +148,14 @@
 
 // Sets flutterAccessibilityContainer as this view's accessibilityContainer.
 @property(nonatomic, retain) id flutterAccessibilityContainer;
+
+/// @brief The flutter view controller.
+@property(nonatomic, weak) UIViewController<FlutterViewResponder>* flutterViewController;
 @end
 
 @interface UIView (FirstResponder)
 // Returns YES if a view or any of its descendant view is the first responder. Returns NO otherwise.
 @property(nonatomic, readonly) BOOL flt_hasFirstResponderInViewHierarchySubtree;
-
-/// @brief The flutter view controller.
-@property(nonatomic, weak) UIViewController<FlutterViewResponder>* _Nullable flutterViewController;
 @end
 
 // This recognizer delays touch events from being dispatched to the responder chain until it failed

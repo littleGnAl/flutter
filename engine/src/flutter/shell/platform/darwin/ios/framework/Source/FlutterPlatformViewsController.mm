@@ -889,7 +889,9 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   TRACE_EVENT0("flutter", "PlatformViewsController::PerformSubmit");
   FML_DCHECK([[NSThread currentThread] isMainThread]);
   
-  self.flutterView = [self.flutterViews objectForKey:@(currentFlutterViewId)];
+//  self.flutterView = [self.flutterViews objectForKey:@(currentFlutterViewId)];
+  
+  self.flutterView = [self.flutterViewControllers objectForKey:@(currentFlutterViewId)].view;
   
   if (self.flutterView == nil) {
     return;
@@ -1001,7 +1003,7 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
     }
     
     for (FlutterTouchInterceptingView* interceptingView in desiredTouchInterceptors) {
-      interceptingView.flutterViewController = flutterViewController;
+      interceptingView.flutterViewController = (UIViewController<FlutterViewResponder>*)flutterViewController;
     }
   }
 }
