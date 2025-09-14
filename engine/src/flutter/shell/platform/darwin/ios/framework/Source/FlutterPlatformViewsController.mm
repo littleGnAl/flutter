@@ -106,7 +106,7 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 /// The size of the current onscreen surface in physical pixels.
 @property(nonatomic, assign) DlISize frameSize;
 
-@property(atomic, assign) int64_t currentFlutterViewId;
+//@property(atomic, assign) int64_t currentFlutterViewId;
 
 /// The task runner for posting tasks to the platform thread.
 @property(nonatomic, readonly) const fml::RefPtr<fml::TaskRunner>& platformTaskRunner;
@@ -429,7 +429,7 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
 - (void)beginFrameWithSize:(flutter::DlISize)frameSize flutterViewId:(int64_t)viewId {
   [self resetFrameState];
   self.frameSize = frameSize;
-  self.currentFlutterViewId = viewId;
+//  self.currentFlutterViewId = viewId;
 //  self.flutterView = [self.flutterViews objectForKey:@(viewId)];
 }
 
@@ -831,7 +831,7 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
                compositionOrder = self.compositionOrder,                  //
                unusedLayers = std::move(unusedLayers),                    //
                surfaceFrames = std::move(surfaceFrames),                  //
-               currentFlutterViewId = self.currentFlutterViewId           //
+               currentFlutterViewId = self.currentProcessingFlutterViewId           //
   ]() mutable {
     [self performSubmit:platformViewLayers
         currentCompositionParams:currentCompositionParams

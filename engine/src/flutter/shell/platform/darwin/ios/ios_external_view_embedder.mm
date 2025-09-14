@@ -20,6 +20,10 @@ IOSExternalViewEmbedder::IOSExternalViewEmbedder(
 
 IOSExternalViewEmbedder::~IOSExternalViewEmbedder() = default;
 
+void IOSExternalViewEmbedder::SetCurrentProcessingView(int64_t flutter_view_id) {
+  platform_views_controller_.currentProcessingFlutterViewId = flutter_view_id;
+}
+
 // |ExternalViewEmbedder|
 DlCanvas* IOSExternalViewEmbedder::GetRootCanvas() {
   // On iOS, the root surface is created from the on-screen render target. Only the surfaces for the

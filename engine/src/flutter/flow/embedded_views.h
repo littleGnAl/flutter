@@ -351,6 +351,8 @@ class ExternalViewEmbedder {
   ExternalViewEmbedder() = default;
 
   virtual ~ExternalViewEmbedder() = default;
+  
+  virtual void SetCurrentProcessingView(int64_t flutter_view_id) {}
 
   // Deallocate the resources for displaying a view.
   //

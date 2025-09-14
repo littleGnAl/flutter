@@ -35,6 +35,8 @@ NS_ASSUME_NONNULL_BEGIN
 /// The task runner used to post rendering tasks to the platform thread.
 @property(nonatomic, assign) const fml::RefPtr<fml::TaskRunner>& taskRunner;
 
+@property(nonatomic, assign) int64_t currentProcessingFlutterViewId;
+
 /// The flutter view.
 @property(nonatomic, weak) UIView* _Nullable flutterView;
 
