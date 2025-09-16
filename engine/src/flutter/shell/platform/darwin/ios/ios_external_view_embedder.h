@@ -22,7 +22,6 @@ class IOSExternalViewEmbedder : public ExternalViewEmbedder {
  private:
   __weak FlutterPlatformViewsController* platform_views_controller_;
   std::shared_ptr<IOSContext> ios_context_;
-  int64_t current_processing_flutter_view_id_ = kFlutterImplicitViewId;
   
   void SetCurrentProcessingView(int64_t flutter_view_id) override;
 

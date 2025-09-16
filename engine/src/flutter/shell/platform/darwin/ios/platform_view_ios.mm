@@ -309,7 +309,9 @@ std::shared_ptr<impeller::Context> PlatformViewIOS::GetImpellerContext() const {
 
 // |PlatformView|
 void PlatformViewIOS::SetSemanticsEnabled(bool enabled) {
-  if (!owner_controller_) {
+  FlutterViewController* owner_controller =
+      [viewControllers_ objectForKey:@(kFlutterImplicitViewId)];
+  if (!owner_controller) {
     [FlutterLogger logWarning:@"Could not set semantics to enabled, this PlatformViewIOS has no "
                                "ViewController."];
     return;
@@ -333,11 +335,13 @@ void PlatformViewIOS::SetAccessibilityFeatures(int32_t flags) {
 void PlatformViewIOS::UpdateSemantics(int64_t view_id,
                                       flutter::SemanticsNodeUpdates update,
                                       flutter::CustomAccessibilityActionUpdates actions) {
-  FML_DCHECK(owner_controller_);
+  FlutterViewController* owner_controller =
+      [viewControllers_ objectForKey:@(view_id)];
+  FML_DCHECK(owner_controller);
   if (accessibility_bridge_) {
     accessibility_bridge_.get()->UpdateSemantics(std::move(update), actions);
     [[NSNotificationCenter defaultCenter] postNotificationName:FlutterSemanticsUpdateNotification
-                                                        object:owner_controller_];
+                                                        object:owner_controller];
   }
 }
 

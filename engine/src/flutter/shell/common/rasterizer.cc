@@ -720,6 +720,7 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
 
   DlCanvas* embedder_root_canvas = nullptr;
   if (external_view_embedder_) {
+    external_view_embedder_->SetCurrentProcessingView(view_id);
     external_view_embedder_->PrepareFlutterView(
         view_id,
         layer_tree.frame_size(), device_pixel_ratio);
