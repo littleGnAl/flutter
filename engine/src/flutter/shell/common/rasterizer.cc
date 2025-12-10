@@ -79,6 +79,7 @@ void Rasterizer::SetImpellerContext(
 }
 
 void Rasterizer::Setup(std::unique_ptr<Surface> surface) {
+  FML_LOG(ERROR) << "Rasterizer::Setup";
   surface_ = std::move(surface);
 
   if (max_cache_bytes_.has_value()) {
@@ -118,7 +119,12 @@ void Rasterizer::TeardownExternalViewEmbedder() {
 }
 
 void Rasterizer::Teardown() {
+  FML_LOG(ERROR) << "Rasterizer::Teardown";
   is_torn_down_ = true;
+  // Give a chance to `external_view_embedder_` to clean the cache for `kFlutterImplicitViewId`
+  if (external_view_embedder_) {
+    external_view_embedder_->CollectView(kFlutterImplicitViewId);
+  }
   if (surface_) {
     auto context_switch = surface_->MakeRenderContextCurrent();
     if (context_switch->GetResult()) {
@@ -709,9 +715,10 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
   FML_DCHECK(surface_);
 
   DlCanvas* embedder_root_canvas = nullptr;
+  std::unique_ptr<SurfaceFrame> embedder_root_frame;
   if (external_view_embedder_) {
-    external_view_embedder_->PrepareFlutterView(layer_tree.frame_size(),
-                                                device_pixel_ratio);
+    external_view_embedder_->PrepareFlutterView(view_id,
+        layer_tree.frame_size(), device_pixel_ratio);
     // TODO(dkwingsmt): Add view ID here.
     embedder_root_canvas = external_view_embedder_->GetRootCanvas();
   }
@@ -729,7 +736,8 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
   // root surface transformation is set by the embedder instead of
   // having to apply it here.
   DlMatrix root_surface_transformation =
-      embedder_root_canvas ? DlMatrix() : surface_->GetRootTransformation();
+  embedder_root_canvas ? DlMatrix() : surface_->GetRootTransformation();
+      // embedder_root_canvas ? DlMatrix() : surface_->GetRootTransformation(view_id);
 
   auto root_surface_canvas =
       embedder_root_canvas ? embedder_root_canvas : frame->Canvas();
@@ -742,7 +750,8 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
       frame->framebuffer_info()
           .supports_readback,           // surface supports pixel reads
       raster_thread_merger_,            // thread merger
-      surface_->GetAiksContext().get()  // aiks context
+      surface_->GetAiksContext().get(),  // aiks context
+      view_id                           // flutter view id
   );
   if (compositor_frame) {
     NOT_SLIMPELLER(compositor_context_->raster_cache().BeginFrame());
@@ -844,7 +853,7 @@ static sk_sp<SkData> ScreenshotLayerTreeAsPicture(
   // https://github.com/flutter/flutter/issues/23435
   auto frame = compositor_context.AcquireFrame(nullptr, &canvas, nullptr,
                                                root_surface_transformation,
-                                               false, true, nullptr, nullptr);
+                                               false, true, nullptr, nullptr, kFlutterImplicitViewId);
   frame->Raster(*tree, true, nullptr);
 
 #if defined(OS_FUCHSIA)
@@ -881,7 +890,8 @@ static void RenderFrameForScreenshot(
       /*instrumentation_enabled=*/false,
       /*surface_supports_readback=*/true,
       /*raster_thread_merger=*/nullptr,
-      /*aiks_context=*/aiks_context.get());
+      /*aiks_context=*/aiks_context.get(),
+      /*flutter_view_id*/kFlutterImplicitViewId);
   canvas->Clear(DlColor::kTransparent());
   frame->Raster(*tree, true, nullptr);
   canvas->Flush();
