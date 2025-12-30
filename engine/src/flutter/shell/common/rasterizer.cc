@@ -119,6 +119,10 @@ void Rasterizer::TeardownExternalViewEmbedder() {
 
 void Rasterizer::Teardown() {
   is_torn_down_ = true;
+  // Give a chance to `external_view_embedder_` to clean the cache for `kFlutterImplicitViewId`
+  // if (external_view_embedder_) {
+  //   external_view_embedder_->CollectView(kFlutterImplicitViewId);
+  // }
   if (surface_) {
     auto context_switch = surface_->MakeRenderContextCurrent();
     if (context_switch->GetResult()) {
@@ -710,7 +714,8 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
 
   DlCanvas* embedder_root_canvas = nullptr;
   if (external_view_embedder_) {
-    external_view_embedder_->PrepareFlutterView(layer_tree.frame_size(),
+    external_view_embedder_->PrepareFlutterView(view_id,
+                                                layer_tree.frame_size(),
                                                 device_pixel_ratio);
     // TODO(dkwingsmt): Add view ID here.
     embedder_root_canvas = external_view_embedder_->GetRootCanvas();
@@ -729,7 +734,7 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
   // root surface transformation is set by the embedder instead of
   // having to apply it here.
   DlMatrix root_surface_transformation =
-      embedder_root_canvas ? DlMatrix() : surface_->GetRootTransformation();
+  embedder_root_canvas ? DlMatrix() : surface_->GetRootTransformation();
 
   auto root_surface_canvas =
       embedder_root_canvas ? embedder_root_canvas : frame->Canvas();
