@@ -137,7 +137,7 @@ NS_ASSUME_NONNULL_BEGIN
  * If the given view controller is already attached to an engine, this call
  * throws an assertion.
  */
-- (FlutterViewIdentifier)addViewController:(FlutterViewController*)viewController;
+- (void)addViewController:(FlutterViewController*)viewController;
 
 /**
  * Notify the engine that a view for the given view controller has been loaded.

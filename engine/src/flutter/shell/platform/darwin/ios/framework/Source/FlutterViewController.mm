@@ -187,16 +187,16 @@ typedef struct MouseState {
   self = [super initWithNibName:nibName bundle:nibBundle];
   if (self) {
     _viewOpaque = YES;
-    if (engine.viewController) {
-      NSString* errorMessage =
-          [NSString stringWithFormat:
-                        @"The supplied FlutterEngine %@ is already used with FlutterViewController "
-                         "instance %@. One instance of the FlutterEngine can only be attached to "
-                         "one FlutterViewController at a time. Set FlutterEngine.viewController to "
-                         "nil before attaching it to another FlutterViewController.",
-                        engine.description, engine.viewController.description];
-      [FlutterLogger logError:errorMessage];
-    }
+    // if (engine.viewController) {
+    //   NSString* errorMessage =
+    //       [NSString stringWithFormat:
+    //                     @"The supplied FlutterEngine %@ is already used with FlutterViewController "
+    //                      "instance %@. One instance of the FlutterEngine can only be attached to "
+    //                      "one FlutterViewController at a time. Set FlutterEngine.viewController to "
+    //                      "nil before attaching it to another FlutterViewController.",
+    //                     engine.description, engine.viewController.description];
+    //   [FlutterLogger logError:errorMessage];
+    // }
     _engine = engine;
     _engineNeedsLaunch = NO;
     _flutterView = [[FlutterView alloc] initWithDelegate:_engine
@@ -833,7 +833,7 @@ static void SendFakeTouchEvent(UIScreen* screen,
 //    self.platformViewsController.flutterView = self.flutterView;
 //    self.platformViewsController.flutterViewController = self;
 //    [self.platformViewsController attachFlutterView:self.viewIdentifier withView:self.flutterView];
-    [self.platformViewsController attachToFlutterViewController:self.viewIdentifier withViewController:self];
+    [self.platformViewsController attachToFlutterViewController:self];
     [self.engine notifyViewCreated:self.viewIdentifier];
   } else {
     self.displayingFlutterUI = NO;
@@ -853,13 +853,14 @@ static void SendFakeTouchEvent(UIScreen* screen,
   if (self.engine && self.engineNeedsLaunch) {
     [self.engine launchEngine:nil libraryURI:nil entrypointArgs:nil];
     // [self.engine setViewController:self];
-    _viewIdentifier = [self.engine addViewController:self];
+    // _viewIdentifier =
+    [self.engine addViewController:self];
     self.engineNeedsLaunch = NO;
   }
   // else if (self.engine.viewController == self) {
   //   [self.engine attachView:viewIdentifier];
   // }
-  else {
+  else if ([self.engine viewControllerForIdentifier:_viewIdentifier] == self) {
     [self.engine attachView:_viewIdentifier];
   }
 
@@ -934,7 +935,8 @@ static void SendFakeTouchEvent(UIScreen* screen,
 - (void)viewWillAppear:(BOOL)animated {
   TRACE_EVENT0("flutter", "viewWillAppear");
 //  if (self.engine.viewController == self) {
-  if (_viewIdentifier == flutter::kFlutterImplicitViewId) {
+
+  if ([self.engine viewControllerForIdentifier:_viewIdentifier] == self) {
     // Send platform settings to Flutter, e.g., platform brightness.
     [self onUserSettingsChanged:nil];
 
@@ -945,14 +947,15 @@ static void SendFakeTouchEvent(UIScreen* screen,
     }
     [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.inactive"];
     [self.engine.restorationPlugin markRestorationComplete];
-  } else {
-    // Only recreate surface on subsequent appearances when viewport metrics are known.
-    // First time surface creation is done on viewDidLayoutSubviews.
-    if (_viewportMetrics.physical_width) {
-      [self surfaceUpdated:YES];
-    }
-    [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.inactive"];
   }
+  // else {
+  //   // Only recreate surface on subsequent appearances when viewport metrics are known.
+  //   // First time surface creation is done on viewDidLayoutSubviews.
+  //   if (_viewportMetrics.physical_width) {
+  //     [self surfaceUpdated:YES];
+  //   }
+  //   [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.inactive"];
+  // }
 
   [super viewWillAppear:animated];
 }
@@ -960,16 +963,18 @@ static void SendFakeTouchEvent(UIScreen* screen,
 - (void)viewDidAppear:(BOOL)animated {
   TRACE_EVENT0("flutter", "viewDidAppear");
 //  if (self.engine.viewController == self) {
-  if (_viewIdentifier == flutter::kFlutterImplicitViewId) {
+  // if (_viewIdentifier == flutter::kFlutterImplicitViewId) {
+  if ([self.engine viewControllerForIdentifier:_viewIdentifier] == self) {
     [self onUserSettingsChanged:nil];
     [self onAccessibilityStatusChanged:nil];
 
 //    if (self.stateIsActive) {
 //      [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.resumed"];
 //    }
-  } else {
-    [self onAccessibilityStatusChanged:nil];
   }
+  //  else {
+  //   [self onAccessibilityStatusChanged:nil];
+  // }
   if (self.stateIsActive) {
     [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.resumed"];
   }
@@ -980,27 +985,22 @@ static void SendFakeTouchEvent(UIScreen* screen,
   TRACE_EVENT0("flutter", "viewWillDisappear");
 //  if (self.engine.viewController == self) {
 //  if (_viewIdentifier == flutter::kFlutterImplicitViewId) {
+  if ([self.engine viewControllerForIdentifier:_viewIdentifier] == self) {
     [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.inactive"];
-//  }
+  }
   [super viewWillDisappear:animated];
 }
 
 - (void)viewDidDisappear:(BOOL)animated {
   TRACE_EVENT0("flutter", "viewDidDisappear");
 //  if (self.engine.viewController == self) {
-  if (_viewIdentifier == flutter::kFlutterImplicitViewId) {
+  if ([self.engine viewControllerForIdentifier:_viewIdentifier] == self) {
     [self invalidateKeyboardAnimationVSyncClient];
     [self ensureViewportMetricsIsCorrect];
     [self surfaceUpdated:NO];
     [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.paused"];
     [self flushOngoingTouches];
     [self.engine notifyLowMemory];
-  } else {
-    [self invalidateKeyboardAnimationVSyncClient];
-    [self ensureViewportMetricsIsCorrect];
-    [self surfaceUpdated:NO];
-    [self.engine.lifecycleChannel sendMessage:@"AppLifecycleState.paused"];
-    [self flushOngoingTouches];
   }
 
   [super viewDidDisappear:animated];

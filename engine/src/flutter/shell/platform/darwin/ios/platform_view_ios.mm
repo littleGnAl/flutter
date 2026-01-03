@@ -24,7 +24,9 @@ FLUTTER_ASSERT_ARC
 
 namespace flutter {
 
-IOSSurfacesManager::IOSSurfacesManager(const std::shared_ptr<IOSContext>& context)
+class IOSSurfacesManager {
+public:
+  IOSSurfacesManager(const std::shared_ptr<IOSContext>& context)
     : impeller_context_(context ? context->GetImpellerContext() : nullptr),
       aiks_context_(context ? context->GetAiksContext() : nullptr) {
   if (!impeller_context_ || !aiks_context_) {
@@ -32,19 +34,21 @@ IOSSurfacesManager::IOSSurfacesManager(const std::shared_ptr<IOSContext>& contex
   }
 }
 
-void IOSSurfacesManager::AddSurface(int64_t view_id, std::unique_ptr<IOSSurface> surface) {
+  ~IOSSurfacesManager() = default;
+
+void AddSurface(int64_t view_id, std::unique_ptr<IOSSurface> surface) {
 //  std::lock_guard<std::mutex> guard(ios_surface_mutex_);
   std::unique_lock<std::shared_mutex> lock(ios_surface_mutex_);
   ios_surfaces_.emplace(view_id, std::move(surface));
 }
 
-void IOSSurfacesManager::RemoveSurface(int64_t view_id) {
+void RemoveSurface(int64_t view_id) {
 //  std::lock_guard<std::mutex> guard(ios_surface_mutex_);
   std::unique_lock<std::shared_mutex> lock(ios_surface_mutex_);
   ios_surfaces_.erase(view_id);
 }
 
-IOSSurface* IOSSurfacesManager::GetSurface(int64_t view_id) const {
+IOSSurface* GetSurface(int64_t view_id) const {
 //  std::lock_guard<std::mutex> guard(ios_surface_mutex_);
   std::shared_lock<std::shared_mutex> lock(ios_surface_mutex_);
   auto iter = ios_surfaces_.find(view_id);
@@ -55,7 +59,7 @@ IOSSurface* IOSSurfacesManager::GetSurface(int64_t view_id) const {
   return nullptr;
 }
 
-std::unique_ptr<Surface> IOSSurfacesManager::CreateGPUSurface() {
+std::unique_ptr<Surface> CreateGPUSurface() {
   // Create a dump `GPUSurfaceMetalImpeller`
   std::shared_lock<std::shared_mutex> lock(ios_surface_mutex_);
   auto iter = ios_surfaces_.begin();
@@ -66,11 +70,11 @@ std::unique_ptr<Surface> IOSSurfacesManager::CreateGPUSurface() {
   return nullptr;
 }
 
-int IOSSurfacesManager::SurfaceCount() const {
+int SurfaceCount() const {
   return rendering_surface_.size();
 }
 
-void IOSSurfacesManager::CreateRenderingSurfaceForView(int64_t view_id) {
+void CreateRenderingSurfaceForView(int64_t view_id) {
   auto *delegate = static_cast<IOSSurfaceMetalImpeller *>(GetSurface(view_id));
 
   rendering_surface_[view_id] = std::make_unique<GPUSurfaceMetalImpeller>(
@@ -78,11 +82,11 @@ void IOSSurfacesManager::CreateRenderingSurfaceForView(int64_t view_id) {
                   aiks_context_);
 }
 
-void IOSSurfacesManager::DestroyRenderingSurfaceForView(int64_t view_id) {
+void DestroyRenderingSurfaceForView(int64_t view_id) {
   rendering_surface_.erase(view_id);
 }
 
-Surface *IOSSurfacesManager::GetRenderingSurface(int64_t view_id) {
+Surface *GetRenderingSurface(int64_t view_id) {
   auto iter = rendering_surface_.find(view_id);
   if (iter != rendering_surface_.end()) {
     return iter->second.get();
@@ -90,13 +94,30 @@ Surface *IOSSurfacesManager::GetRenderingSurface(int64_t view_id) {
   return nullptr;
 }
 
-std::unique_ptr<SurfaceFrame> IOSSurfacesManager::CreateSurfaceFrame(int64_t flutter_view_id, DlISize& frame_size) {
+std::unique_ptr<SurfaceFrame> CreateSurfaceFrame(int64_t flutter_view_id, DlISize& frame_size) {
     auto iter = rendering_surface_.find(flutter_view_id);
     if (iter != rendering_surface_.end()) {
       return iter->second.get()->AcquireFrame(frame_size);
     }
     return nullptr;
 }
+
+  private:
+
+    const std::shared_ptr<impeller::Context> impeller_context_;
+    std::shared_ptr<impeller::AiksContext> aiks_context_;
+    // bool is_valid_ = false;
+
+    std::unordered_map<int64_t, std::unique_ptr<IOSSurface>> ios_surfaces_;
+
+    std::unordered_map<int64_t, std::unique_ptr<Surface>> rendering_surface_;
+
+    // Since the `ios_surface_` is created on the platform thread but
+    // used on the raster thread we need to protect it with a mutex.
+    mutable std::shared_mutex ios_surface_mutex_;
+
+    FML_DISALLOW_COPY_AND_ASSIGN(IOSSurfacesManager);
+};
 
 PlatformViewIOS::PlatformViewIOS(PlatformView::Delegate& delegate,
                                  const std::shared_ptr<IOSContext>& context,
@@ -183,7 +204,7 @@ void PlatformViewIOS::SetOwnerViewController(__weak FlutterViewController* owner
 
 
 
-  std::lock_guard<std::mutex> guard(ios_surface_mutex_);
+  // std::lock_guard<std::mutex> guard(ios_surface_mutex_);
   // if (ios_surface_ || !owner_controller) {
   //   NotifyDestroyed();
   //   ios_surface_.reset();
@@ -191,33 +212,35 @@ void PlatformViewIOS::SetOwnerViewController(__weak FlutterViewController* owner
   // }
   // owner_controller_ = owner_controller;
 
-  FlutterViewIdentifier viewIdentifier = owner_controller.viewIdentifier;
+  // FlutterViewIdentifier viewIdentifier = owner_controller.viewIdentifier;
   // NSAssert([viewControllers_ objectForKey:@(viewIdentifier)] == nil,
   //          @"The requested view ID is occupied.");
-  [viewControllers_ setObject:owner_controller forKey:@(viewIdentifier)];
+  // [viewControllers_ setObject:owner_controller forKey:@(viewIdentifier)];
 
   ApplyLocaleToOwnerController();
 
+  AddOwnerViewController(owner_controller);
+
   // Add an observer that will clear out the owner_controller_ ivar and
   // the accessibility_bridge_ in case the view controller is deleted.
-  dealloc_view_controller_observer_.reset([[NSNotificationCenter defaultCenter]
-      addObserverForName:FlutterViewControllerWillDealloc
-                  object:owner_controller_
-                   queue:[NSOperationQueue mainQueue]
-              usingBlock:^(NSNotification* note) {
-                FlutterViewController* owner_controller =
-                  (FlutterViewController*)note.object;
-                if (owner_controller.viewIdentifier == kFlutterImplicitViewId) {
-                // Implicit copy of 'this' is fine.
-                accessibility_bridge_.reset();
-                }
+  // dealloc_view_controller_observer_.reset([[NSNotificationCenter defaultCenter]
+  //     addObserverForName:FlutterViewControllerWillDealloc
+  //                 object:owner_controller_
+  //                  queue:[NSOperationQueue mainQueue]
+  //             usingBlock:^(NSNotification* note) {
+  //               FlutterViewController* owner_controller =
+  //                 (FlutterViewController*)note.object;
+  //               if (owner_controller.viewIdentifier == kFlutterImplicitViewId) {
+  //               // Implicit copy of 'this' is fine.
+  //               accessibility_bridge_.reset();
+  //               }
 
-                // owner_controller_ = nil;
-              }]);
+  //               // owner_controller_ = nil;
+  //             }]);
 
-  if (owner_controller && owner_controller.isViewLoaded) {
-    this->attachView(viewIdentifier);
-  }
+  // if (owner_controller && owner_controller.isViewLoaded) {
+  //   this->attachView(viewIdentifier);
+  // }
   // Do not call `NotifyCreated()` here - let FlutterViewController take care
   // of that when its Viewport is sized.  If `NotifyCreated()` is called here,
   // it can occasionally get invoked before the viewport is sized resulting in
@@ -243,31 +266,71 @@ void PlatformViewIOS::AddOwnerViewController(__weak FlutterViewController* owner
 //            @"The requested view ID is occupied.");
   [viewControllers_ setObject:owner_controller forKey:@(viewIdentifier)];
 
-  if (owner_controller.viewIdentifier == kFlutterImplicitViewId) {
-  if (accessibility_bridge_) {
-    accessibility_bridge_ = std::make_unique<AccessibilityBridge>(
-        owner_controller, this, owner_controller.platformViewsController);
-  }
+  // auto iter = accessibility_bridges_.find(viewIdentifier);
+  // if (iter != accessibility_bridges_.end()) {
+  //   std::make_unique<AccessibilityBridge>(
+  //       owner_controller, this, owner_controller.platformViewsController);
+  // }
+
+  // if (owner_controller.viewIdentifier == kFlutterImplicitViewId) {
+  // if (accessibility_bridge_) {
+  //   accessibility_bridge_ = std::make_unique<AccessibilityBridge>(
+  //       owner_controller, this, owner_controller.platformViewsController);
+  // }
 
 
-    // Add an observer that will clear out the owner_controller_ ivar and
-    // the accessibility_bridge_ in case the view controller is deleted.
-    dealloc_view_controller_observer_.reset([[NSNotificationCenter defaultCenter]
-        addObserverForName:FlutterViewControllerWillDealloc
-                    object:owner_controller
-                     queue:[NSOperationQueue mainQueue]
-                usingBlock:^(NSNotification* note) {
-                  // Implicit copy of 'this' is fine.
-                  FlutterViewController* owner_controller =
-                    (FlutterViewController*)note.object;
-                  if (owner_controller.viewIdentifier == kFlutterImplicitViewId) {
-                    // accessibility_bridge_.Clear();
-                    accessibility_bridge_.reset();
-                  }
 
-                  // owner_controller_ = nil;
-                }]);
-  }
+  // }
+
+  // Add an observer that will clear out the owner_controller_ ivar and
+  // the accessibility_bridge_ in case the view controller is deleted.
+
+  auto [it, inserted] =
+    flutter_view_controller_will_dealloc_observers_.try_emplace(viewIdentifier);
+  it->second.reset([[NSNotificationCenter defaultCenter]
+      addObserverForName:FlutterViewControllerWillDealloc
+                  object:owner_controller
+                    queue:[NSOperationQueue mainQueue]
+              usingBlock:^(NSNotification* note) {
+                // Implicit copy of 'this' is fine.
+                FlutterViewController* owner_controller =
+                  (FlutterViewController*)note.object;
+                // if (owner_controller.viewIdentifier == kFlutterImplicitViewId) {
+                //   // accessibility_bridge_.Clear();
+                //   accessibility_bridge_.reset();
+                // }
+
+                flutter_view_controller_will_dealloc_observers_.erase(owner_controller.viewIdentifier);
+
+                auto iter = accessibility_bridges_.find(owner_controller.viewIdentifier);
+                if (iter != accessibility_bridges_.end()) {
+                  accessibility_bridges_.erase(owner_controller.viewIdentifier);
+                }
+
+                // owner_controller_ = nil;
+              }]);
+
+
+  // dealloc_view_controller_observer_.reset([[NSNotificationCenter defaultCenter]
+  //     addObserverForName:FlutterViewControllerWillDealloc
+  //                 object:owner_controller
+  //                   queue:[NSOperationQueue mainQueue]
+  //             usingBlock:^(NSNotification* note) {
+  //               // Implicit copy of 'this' is fine.
+  //               FlutterViewController* owner_controller =
+  //                 (FlutterViewController*)note.object;
+  //               // if (owner_controller.viewIdentifier == kFlutterImplicitViewId) {
+  //               //   // accessibility_bridge_.Clear();
+  //               //   accessibility_bridge_.reset();
+  //               // }
+
+  //               auto iter = accessibility_bridges_.find(owner_controller.viewIdentifier);
+  //               if (iter != accessibility_bridges_.end()) {
+  //                 accessibility_bridges_.erase(owner_controller.viewIdentifier);
+  //               }
+
+  //               // owner_controller_ = nil;
+  //             }]);
 
   if (owner_controller && owner_controller.isViewLoaded) {
     this->attachView(viewIdentifier);
@@ -285,13 +348,14 @@ void PlatformViewIOS::RemoveOwnerViewController(FlutterViewIdentifier viewIdenti
 //  FlutterViewController* owner_controller = [viewControllers_ objectForKey:@(viewIdentifier)];
 //  FML_DCHECK(owner_controller);
 
-  if (viewIdentifier == kFlutterImplicitViewId) {
-    NotifyDestroyed();
-    accessibility_bridge_.reset();
-  }
+  // if (viewIdentifier == kFlutterImplicitViewId) {
+  //   NotifyDestroyed();
+  //   accessibility_bridge_.reset();
+  // }
 
   [viewControllers_ removeObjectForKey:@(viewIdentifier)];
   ios_surfaces_manager_->RemoveSurface(viewIdentifier);
+  accessibility_bridges_.erase(viewIdentifier);
 
 //   if (ios_surfaces_manager_ || !owner_controller) {
 //     NotifyDestroyed();
@@ -315,11 +379,16 @@ void PlatformViewIOS::attachView(FlutterViewIdentifier viewIdentifier) {
   ios_surfaces_manager_->AddSurface( viewIdentifier, std::move(ios_surface));
 
   // TODO: Make `AccessibilityBridge` support multi-view.
-  if (viewIdentifier == kFlutterImplicitViewId) {
-    if (accessibility_bridge_) {
-      accessibility_bridge_.reset(
-          new AccessibilityBridge(owner_controller, this, platform_views_controller_));
-    }
+  // if (viewIdentifier == kFlutterImplicitViewId) {
+  //   if (accessibility_bridge_) {
+  //     accessibility_bridge_.reset(
+  //         new AccessibilityBridge(owner_controller, this, platform_views_controller_));
+  //   }
+  // }
+  auto iter = accessibility_bridges_.find(owner_controller.viewIdentifier);
+  if (iter != accessibility_bridges_.end()) {
+    accessibility_bridges_[owner_controller.viewIdentifier] =
+        std::make_unique<AccessibilityBridge>(owner_controller, this, platform_views_controller_);
   }
 }
 
@@ -384,8 +453,12 @@ void PlatformViewIOS::UpdateSemantics(int64_t view_id,
   FlutterViewController* owner_controller =
       [viewControllers_ objectForKey:@(view_id)];
   FML_DCHECK(owner_controller);
-  if (accessibility_bridge_) {
-    accessibility_bridge_.get()->UpdateSemantics(std::move(update), actions);
+
+  if (owner_controller) {
+    auto iter = accessibility_bridges_.find(owner_controller.viewIdentifier);
+    if (iter != accessibility_bridges_.end()) {
+      iter->second.get()->UpdateSemantics(std::move(update), actions);
+    }
     [[NSNotificationCenter defaultCenter] postNotificationName:FlutterSemanticsUpdateNotification
                                                         object:owner_controller];
   }
@@ -399,17 +472,39 @@ void PlatformViewIOS::SetApplicationLocale(std::string locale) {
 
 // |PlatformView|
 void PlatformViewIOS::SetSemanticsTreeEnabled(bool enabled) {
-  FlutterViewController* owner_controller = [viewControllers_ objectForKey:@(kFlutterImplicitViewId)];
-//  FML_DCHECK(owner_controller);
-  if (owner_controller) {
-    if (enabled) {
-      if (accessibility_bridge_) {
-        return;
+//   FlutterViewController* owner_controller = [viewControllers_ objectForKey:@(kFlutterImplicitViewId)];
+// //  FML_DCHECK(owner_controller);
+//   if (owner_controller) {
+//     if (enabled) {
+//       if (accessibility_bridge_) {
+//         return;
+//       }
+//       accessibility_bridge_ =
+//           std::make_unique<AccessibilityBridge>(owner_controller, this, platform_views_controller_);
+//     } else {
+//       accessibility_bridge_.reset();
+//     }
+//   }
+  if ([viewControllers_ count] > 0) {
+    NSEnumerator* e = [viewControllers_ objectEnumerator];
+    FlutterViewController* controller = nil;
+    while ((controller = [e nextObject])) {
+      if (enabled) {
+        // if (accessibility_bridge_) {
+        //   return;
+        // }
+
+        auto iter = accessibility_bridges_.find(controller.viewIdentifier);
+        if (iter != accessibility_bridges_.end()) {
+          return;
+        }
+
+
+        accessibility_bridges_[controller.viewIdentifier] =
+            std::make_unique<AccessibilityBridge>(controller, this, platform_views_controller_);
+      } else {
+        accessibility_bridges_.erase(controller.viewIdentifier);
       }
-      accessibility_bridge_ =
-          std::make_unique<AccessibilityBridge>(owner_controller, this, platform_views_controller_);
-    } else {
-      accessibility_bridge_.reset();
     }
   }
 }
@@ -421,15 +516,32 @@ std::unique_ptr<VsyncWaiter> PlatformViewIOS::CreateVSyncWaiter() {
 
 // |PlatformView|
 void PlatformViewIOS::OnPreEngineRestart() const {
-  if (accessibility_bridge_) {
-    accessibility_bridge_.get()->clearState();
+  for (auto& [view_id, bridge] : accessibility_bridges_) {
+    if (bridge) {
+      bridge->clearState();
+    }
   }
-  if (!owner_controller_) {
-    return;
+
+  // if (accessibility_bridge_) {
+  //   accessibility_bridge_.get()->clearState();
+  // }
+  // if (!owner_controller_) {
+  //   return;
+  // }
+
+  if ([viewControllers_ count] > 0) {
+    NSEnumerator* e = [viewControllers_ objectEnumerator];
+    FlutterViewController* controller = nil;
+    while ((controller = [e nextObject])) {
+      [controller.platformViewsController reset];
+      [controller.restorationPlugin reset];
+      [controller.textInputPlugin reset];
+    }
   }
-  [owner_controller_.platformViewsController reset];
-  [owner_controller_.restorationPlugin reset];
-  [owner_controller_.textInputPlugin reset];
+
+  // [owner_controller_.platformViewsController reset];
+  // [owner_controller_.restorationPlugin reset];
+  // [owner_controller_.textInputPlugin reset];
 }
 
 // |PlatformView|
@@ -472,10 +584,19 @@ bool PlatformViewIOS::HasRenderingSurface(int64_t flutter_view_id) {
 }
 
 void PlatformViewIOS::ApplyLocaleToOwnerController() {
-  FlutterViewController* owner_controller = [viewControllers_ objectForKey:@(kFlutterImplicitViewId)];
-  if (owner_controller) {
-    owner_controller.applicationLocale =
+  // FlutterViewController* owner_controller = [viewControllers_ objectForKey:@(kFlutterImplicitViewId)];
+  // if (owner_controller) {
+  //   owner_controller.applicationLocale =
+  //       application_locale_.empty() ? nil : @(application_locale_.data());
+  // }
+
+  if ([viewControllers_ count] > 0) {
+    NSEnumerator* e = [viewControllers_ objectEnumerator];
+    FlutterViewController* controller = nil;
+    while ((controller = [e nextObject])) {
+    controller.applicationLocale =
         application_locale_.empty() ? nil : @(application_locale_.data());
+    }
   }
 }
   // void PlatformViewIOS::NotifyCreated(int64_t view_id) {}

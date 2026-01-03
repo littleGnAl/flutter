@@ -12,6 +12,8 @@
 #import "FlutterEngine.h"
 #import "FlutterMacros.h"
 
+NS_ASSUME_NONNULL_BEGIN
+
 /**
  * A callback for when FlutterHeadlessDartRunner has attempted to start a Dart
  * Isolate in the background.
@@ -46,7 +48,7 @@ FLUTTER_DEPRECATED("FlutterEngine should be used rather than FlutterHeadlessDart
  * be unique across FlutterEngine instances
  * @param projectOrNil The `FlutterDartProject` to run.
  */
-- (instancetype)initWithName:(NSString*)labelPrefix project:(FlutterDartProject*)projectOrNil;
+- (instancetype)initWithName:(NSString*)labelPrefix project:(nullable FlutterDartProject*)projectOrNil;
 
 /**
  * Initialize this FlutterHeadlessDartRunner with a `FlutterDartProject`.
@@ -63,7 +65,7 @@ FLUTTER_DEPRECATED("FlutterEngine should be used rather than FlutterHeadlessDart
  * @param allowHeadlessExecution Must be set to `YES`.
  */
 - (instancetype)initWithName:(NSString*)labelPrefix
-                     project:(FlutterDartProject*)projectOrNil
+                     project:(nullable FlutterDartProject*)projectOrNil
       allowHeadlessExecution:(BOOL)allowHeadlessExecution;
 
 /**
@@ -82,9 +84,15 @@ FLUTTER_DEPRECATED("FlutterEngine should be used rather than FlutterHeadlessDart
  * @param restorationEnabled Must be set to `NO`.
  */
 - (instancetype)initWithName:(NSString*)labelPrefix
-                     project:(FlutterDartProject*)projectOrNil
+                     project:(nullable FlutterDartProject*)project
       allowHeadlessExecution:(BOOL)allowHeadlessExecution
-          restorationEnabled:(BOOL)restorationEnabled NS_DESIGNATED_INITIALIZER;
+          restorationEnabled:(BOOL)restorationEnabled;
+
+- (instancetype)initWithName:(NSString*)labelPrefix
+                     project:(nullable FlutterDartProject*)project
+      allowHeadlessExecution:(BOOL)allowHeadlessExecution
+          restorationEnabled:(BOOL)restorationEnabled
+            multiViewEnabled:(BOOL)multiViewEnabled NS_DESIGNATED_INITIALIZER;
 
 /**
  * Not recommended for use - will initialize with a default label ("io.flutter.headless")
@@ -93,5 +101,7 @@ FLUTTER_DEPRECATED("FlutterEngine should be used rather than FlutterHeadlessDart
 - (instancetype)init;
 
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif  // FLUTTER_SHELL_PLATFORM_DARWIN_IOS_FRAMEWORK_HEADERS_FLUTTERHEADLESSDARTRUNNER_H_

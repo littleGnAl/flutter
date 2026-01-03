@@ -23,49 +23,9 @@
 #import "flutter/shell/platform/darwin/ios/rendering_api_selection.h"
 
 @class FlutterViewController;
+class IOSSurfacesManager;
 
 namespace flutter {
-
-class IOSSurfacesManager {
-public:
-  IOSSurfacesManager(const std::shared_ptr<IOSContext>& context);
-
-  ~IOSSurfacesManager() = default;
-
-  void AddSurface(int64_t view_id, std::unique_ptr<IOSSurface> surface);
-
-  void RemoveSurface(int64_t view_id);
-
-  IOSSurface* GetSurface(int64_t view_id) const;
-
-  std::unique_ptr<Surface> CreateGPUSurface();
-
-  int SurfaceCount() const;
-
-  void CreateRenderingSurfaceForView(int64_t view_id);
-
-  void DestroyRenderingSurfaceForView(int64_t view_id);
-
-  Surface *GetRenderingSurface(int64_t view_id);
-
-  std::unique_ptr<SurfaceFrame> CreateSurfaceFrame(int64_t flutter_view_id, DlISize& frame_size);
-
-  private:
-
-    const std::shared_ptr<impeller::Context> impeller_context_;
-    std::shared_ptr<impeller::AiksContext> aiks_context_;
-    // bool is_valid_ = false;
-
-    std::unordered_map<int64_t, std::unique_ptr<IOSSurface>> ios_surfaces_;
-
-    std::unordered_map<int64_t, std::unique_ptr<Surface>> rendering_surface_;
-
-    // Since the `ios_surface_` is created on the platform thread but
-    // used on the raster thread we need to protect it with a mutex.
-    mutable std::shared_mutex ios_surface_mutex_;
-
-    FML_DISALLOW_COPY_AND_ASSIGN(IOSSurfacesManager);
-};
 
 /**
  * A bridge connecting the platform agnostic shell and the iOS embedding.
@@ -219,7 +179,9 @@ class PlatformViewIOS final : public PlatformView {
   std::shared_ptr<IOSContext> ios_context_;
   __weak FlutterPlatformViewsController* platform_views_controller_;
   std::unique_ptr<AccessibilityBridge> accessibility_bridge_;
+  std::unordered_map<int64_t, std::unique_ptr<AccessibilityBridge>> accessibility_bridges_;
   ScopedObserver dealloc_view_controller_observer_;
+  std::unordered_map<int64_t, ScopedObserver> flutter_view_controller_will_dealloc_observers_;
   std::vector<std::string> platform_resolved_locale_;
   std::shared_ptr<PlatformMessageHandlerIos> platform_message_handler_;
   std::shared_ptr<IOSSurfacesManager> ios_surfaces_manager_;

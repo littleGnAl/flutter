@@ -120,6 +120,7 @@ NSString* const kFlutterApplicationRegistrarKey = @"io.flutter.flutter.applicati
 @property(nonatomic, readonly, copy) NSString* labelPrefix;
 @property(nonatomic, readonly, assign) BOOL allowHeadlessExecution;
 @property(nonatomic, readonly, assign) BOOL restorationEnabled;
+@property(nonatomic, readonly, assign) BOOL multiViewEnabled;
 
 @property(nonatomic, strong) FlutterPlatformViewsController* platformViewsController;
 @property(nonatomic, strong) FlutterEnginePluginSceneLifeCycleDelegate* sceneLifeCycleDelegate;
@@ -222,7 +223,7 @@ NSString* const kFlutterApplicationRegistrarKey = @"io.flutter.flutter.applicati
   // It can't use NSDictionary, because the values need to be weak references.
   NSMapTable* _viewControllers;
 
-    // View identifier for the next view to be created.
+  // View identifier for the next view to be created.
   // Only used when multiview is enabled.
   FlutterViewIdentifier _nextViewIdentifier;
 }
@@ -256,10 +257,23 @@ NSString* const kFlutterApplicationRegistrarKey = @"io.flutter.flutter.applicati
                      project:(FlutterDartProject*)project
       allowHeadlessExecution:(BOOL)allowHeadlessExecution
           restorationEnabled:(BOOL)restorationEnabled {
+  return [self initWithName:labelPrefix
+                     project:project
+      allowHeadlessExecution:allowHeadlessExecution
+          restorationEnabled:restorationEnabled
+            multiViewEnabled:NO];
+}
+
+- (instancetype)initWithName:(NSString*)labelPrefix
+                     project:(FlutterDartProject*)project
+      allowHeadlessExecution:(BOOL)allowHeadlessExecution
+          restorationEnabled:(BOOL)restorationEnabled
+            multiViewEnabled:(BOOL)multiViewEnabled {
   self = [super init];
   NSAssert(self, @"Super init cannot be nil");
   NSAssert(labelPrefix, @"labelPrefix is required");
 
+  _multiViewEnabled = multiViewEnabled;
   _restorationEnabled = restorationEnabled;
   _allowHeadlessExecution = allowHeadlessExecution;
   _labelPrefix = [labelPrefix copy];
@@ -558,12 +572,59 @@ NSString* const kFlutterApplicationRegistrarKey = @"io.flutter.flutter.applicati
 
 - (void)setViewController:(FlutterViewController*)viewController {
   FML_DCHECK(self.platformView);
+
+
+  FlutterViewController* currentController =
+      [_viewControllers objectForKey:@(flutter::kFlutterImplicitViewId)];
+  if (currentController == viewController) {
+    // From nil to nil, or from non-nil to the same controller.
+    return;
+  }
+  if (currentController == nil && viewController != nil) {
+    // From nil to non-nil.
+    // NSAssert(viewController.engine == nil,
+    //          @"Failed to set view controller to the engine: "
+    //          @"The given FlutterViewController is already attached to an engine %@. "
+    //          @"If you wanted to create an FlutterViewController and set it to an existing engine, "
+    //          @"you should use FlutterViewController#init(engine:, nibName, bundle:) instead.",
+    //          viewController.engine);
+
+
+    [self registerViewController:viewController forIdentifier:flutter::kFlutterImplicitViewId];
+  } else if (currentController != nil && viewController == nil) {
+    NSAssert(currentController.viewIdentifier == flutter::kFlutterImplicitViewId,
+             @"The default controller has an unexpected ID %llu", currentController.viewIdentifier);
+    // From non-nil to nil.
+    [self deregisterViewControllerForIdentifier:flutter::kFlutterImplicitViewId];
+    // [self shutDownIfNeeded];
+  } else {
+    // From non-nil to a different non-nil view controller.
+    // NSAssert(NO,
+    //          @"Failed to set view controller to the engine: "
+    //          @"The engine already has an implicit view controller %@. "
+    //          @"If you wanted to make the implicit view render in a different window, "
+    //          @"you should attach the current view controller to the window instead.",
+    //          [_viewControllers objectForKey:@(flutter::kFlutterImplicitViewId)]);
+    if (engine.viewController) {
+      NSString* errorMessage =
+          [NSString stringWithFormat:
+                        @"The supplied FlutterEngine %@ is already used with FlutterViewController "
+                         "instance %@. One instance of the FlutterEngine can only be attached to "
+                         "one FlutterViewController at a time. Set FlutterEngine.viewController to "
+                         "nil before attaching it to another FlutterViewController.",
+                        engine.description, engine.viewController.description];
+      [FlutterLogger logError:errorMessage];
+    }
+  }
+
+
+
   // _viewController = viewController;
   // self.platformView->SetOwnerViewController(_viewController);
 //  self.platformView->SetOwnerViewController(viewController);
-  self.platformView->AddOwnerViewController(viewController);
-  [self maybeSetupPlatformViewChannels];
-  [self updateDisplays];
+//   // self.platformView->AddOwnerViewController(viewController);
+//   [self maybeSetupPlatformViewChannels];
+//   [self updateDisplays];
 //  self.textInputPlugin.viewController = viewController;
 
 //  if (viewController) {
@@ -640,7 +701,10 @@ NSString* const kFlutterApplicationRegistrarKey = @"io.flutter.flutter.applicati
 //  }
 
   if (viewIdentifier == flutter::kFlutterImplicitViewId) {
-    [self setViewController:controller];
+     self.platformView->SetOwnerViewController(controller);
+    // self.platformView->AddOwnerViewController(viewController);
+    [self maybeSetupPlatformViewChannels];
+    [self updateDisplays];
   } else {
 //    self.platformView->SetOwnerViewController(controller);
     self.platformView->AddOwnerViewController(controller);
@@ -745,7 +809,7 @@ NSString* const kFlutterApplicationRegistrarKey = @"io.flutter.flutter.applicati
   // [waiter invalidate];
 }
 
-- (FlutterViewIdentifier)addViewController:(FlutterViewController*)controller {
+- (void)addViewController:(FlutterViewController*)controller {
   // if (!_multiViewEnabled) {
   //   // When multiview is disabled, the engine will only assign views to the implicit view ID.
   //   // The implicit view ID can be reused if and only if the implicit view is unassigned.
@@ -755,11 +819,37 @@ NSString* const kFlutterApplicationRegistrarKey = @"io.flutter.flutter.applicati
   // } else {
   //   // When multiview is enabled, the engine will assign views to a self-incrementing ID.
   //   // The implicit view ID can not be reused.
-     FlutterViewIdentifier viewIdentifier = _nextViewIdentifier++;
-     [self registerViewController:controller forIdentifier:viewIdentifier];
-  return viewIdentifier;
+  //    FlutterViewIdentifier viewIdentifier = _nextViewIdentifier++;
+  //    [self registerViewController:controller forIdentifier:viewIdentifier];
+  // return viewIdentifier;
   // }
 //  return kFlutterImplicitViewId;
+
+  if (!_multiViewEnabled) {
+    // When multiview is disabled, the engine will only assign views to the implicit view ID.
+    // The implicit view ID can be reused if and only if the implicit view is unassigned.
+    // NSAssert(self.viewController == nil,
+    //          @"The engine already has a view controller for the implicit view.");
+
+
+    if (self.viewController) {
+      NSString* errorMessage =
+          [NSString stringWithFormat:
+                        @"The supplied FlutterEngine %@ is already used with FlutterViewController "
+                         "instance %@. One instance of the FlutterEngine can only be attached to "
+                         "one FlutterViewController at a time. Set FlutterEngine.viewController to "
+                         "nil before attaching it to another FlutterViewController.",
+                        self.description, self.viewController.description];
+      [FlutterLogger logError:errorMessage];
+    }
+
+    self.viewController = controller;
+  } else {
+    // When multiview is enabled, the engine will assign views to a self-incrementing ID.
+    // The implicit view ID can not be reused.
+    FlutterViewIdentifier viewIdentifier = _nextViewIdentifier++;
+    [self registerViewController:controller forIdentifier:viewIdentifier];
+  }
 }
 
 - (void)removeViewController:(FlutterViewIdentifier)viewIdentifier {
@@ -802,9 +892,7 @@ NSString* const kFlutterApplicationRegistrarKey = @"io.flutter.flutter.applicati
 }
 
 - (void)notifyViewControllerDeallocated:(FlutterViewIdentifier)viewIdentifier {
-  if (viewIdentifier == flutter::kFlutterImplicitViewId) {
-    [self.lifecycleChannel sendMessage:@"AppLifecycleState.detached"];
-  }
+  [self.lifecycleChannel sendMessage:@"AppLifecycleState.detached"];
 
 //  self.textInputPlugin.viewController = nil;
 //  if ([_viewControllers count] == 1 && !_allowHeadlessExecution) {

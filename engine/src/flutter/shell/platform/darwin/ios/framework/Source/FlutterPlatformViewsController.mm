@@ -1096,9 +1096,8 @@ static CGRect GetCGRectFromDlRect(const DlRect& clipDlRect) {
   [self.flutterViews removeObjectForKey:@(flutterViewId)];
 }
 
-- (void)attachToFlutterViewController:(int64_t)flutterViewId
-                   withViewController:(__weak FlutterViewController*)controller {
-  [self.flutterViewControllers setObject:controller forKey:@(flutterViewId)];
+- (void)attachToFlutterViewController:(__weak FlutterViewController*)controller {
+  [self.flutterViewControllers setObject:controller forKey:@(controller.viewIdentifier)];
 }
 
 - (void)detachFromFlutterViewController:(int64_t)flutterViewId {

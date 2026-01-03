@@ -161,7 +161,13 @@ FLUTTER_DARWIN_EXPORT
 - (instancetype)initWithName:(NSString*)labelPrefix
                      project:(nullable FlutterDartProject*)project
       allowHeadlessExecution:(BOOL)allowHeadlessExecution
-          restorationEnabled:(BOOL)restorationEnabled NS_DESIGNATED_INITIALIZER;
+          restorationEnabled:(BOOL)restorationEnabled;
+
+- (instancetype)initWithName:(NSString*)labelPrefix
+                     project:(nullable FlutterDartProject*)project
+      allowHeadlessExecution:(BOOL)allowHeadlessExecution
+          restorationEnabled:(BOOL)restorationEnabled
+            multiViewEnabled:(BOOL)multiViewEnabled NS_DESIGNATED_INITIALIZER;
 
 /**
  * Runs a Dart program on an Isolate from the main Dart library (i.e. the library that
