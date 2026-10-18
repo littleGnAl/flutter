@@ -374,7 +374,7 @@ TEST_F(EngineTest, SpawnSharesFontLibrary) {
         /*gpu_disabled_switch=*/std::make_shared<fml::SyncSwitch>());
 
     auto spawn =
-        engine->Spawn(delegate_, dispatcher_maker_, settings_, nullptr,
+        engine->Spawn(delegate_, settings_, task_runners_, nullptr,
                       std::string(), io_manager_, snapshot_delegate_, nullptr);
     EXPECT_TRUE(spawn != nullptr);
     EXPECT_EQ(&engine->GetFontCollection(), &spawn->GetFontCollection());
@@ -402,7 +402,7 @@ TEST_F(EngineTest, SpawnWithCustomInitialRoute) {
         /*gpu_disabled_switch=*/std::make_shared<fml::SyncSwitch>());
 
     auto spawn =
-        engine->Spawn(delegate_, dispatcher_maker_, settings_, nullptr, "/foo",
+        engine->Spawn(delegate_, settings_, task_runners_, nullptr, "/foo",
                       io_manager_, snapshot_delegate_, nullptr);
     EXPECT_TRUE(spawn != nullptr);
     ASSERT_EQ("/foo", spawn->InitialRoute());
@@ -433,7 +433,7 @@ TEST_F(EngineTest, SpawnWithCustomSettings) {
     custom_settings.persistent_isolate_data =
         std::make_shared<fml::DataMapping>("foo");
     auto spawn =
-        engine->Spawn(delegate_, dispatcher_maker_, custom_settings, nullptr,
+        engine->Spawn(delegate_, custom_settings, task_runners_, nullptr,
                       std::string(), io_manager_, snapshot_delegate_, nullptr);
     EXPECT_TRUE(spawn != nullptr);
     auto new_persistent_isolate_data =
@@ -506,7 +506,7 @@ TEST_F(EngineTest, SpawnedEngineInheritsAssetManager) {
     EXPECT_EQ(engine->GetAssetManager(), asset_manager);
 
     auto spawn =
-        engine->Spawn(delegate_, dispatcher_maker_, settings_, nullptr,
+        engine->Spawn(delegate_, settings_, task_runners_, nullptr,
                       std::string(), io_manager_, snapshot_delegate_, nullptr);
     EXPECT_TRUE(spawn != nullptr);
     EXPECT_EQ(engine->GetAssetManager(), spawn->GetAssetManager());
